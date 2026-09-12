@@ -12,11 +12,23 @@ cambios conceptuales deben añadirse aquí con su fecha, motivo y efecto en el
 alcance o en los criterios de aceptación, conservando el texto original como
 referencia histórica.
 
+- [Estado consolidado del POC y próximo milestone](docs/POCStateAndMilestone4.md)
 - [Decisiones vigentes](#decisiones-vigentes)
-- [Estado de implementación](#current-scope-milestone-2)
+- [Estado de implementación](#current-scope-milestone-3)
 - [Configuración de Telnyx](#configure-telnyx)
 - [Ejecución y prueba manual](#open-and-run)
 - [Especificación original completa](#especificación-original-completa)
+
+### Referencia para continuar el desarrollo
+
+El **milestone 3 está validado por el usuario para la conversación de voz**. El
+siguiente paso es `ask_user` (milestone 4), todavía separado de Telnyx.
+
+Antes de implementarlo, leer [Estado vigente del POC y preparación del milestone 4](docs/POCStateAndMilestone4.md):
+consolida idiomas, identidad, confirmación de citas, límites conversacionales,
+cierre automático, parámetros de audio y criterios de aceptación. La verificación
+visual del autoscroll sigue pendiente. La especificación original se conserva al
+final como referencia histórica; las decisiones vigentes tienen precedencia.
 
 ### Decisiones vigentes
 
@@ -27,7 +39,7 @@ Son dos configuraciones independientes:
 | Configuración | Alcance | Estado |
 | --- | --- | --- |
 | Idioma de la aplicación: español o inglés | Pantallas, controles, mensajes propios de la app y preguntas dirigidas al usuario | Selector persistente e interfaz implementados; preguntas pendientes del milestone 4 |
-| Idioma del agente, elegido para cada llamada | Conversación hablada con la persona que atiende el teléfono | Campo implementado; uso por Realtime pendiente del milestone 3 |
+| Idioma del agente, elegido para cada llamada | Conversación hablada con la persona que atiende el teléfono | Contexto enviado a Realtime en la prueba independiente del milestone 3 |
 
 **Cuando la aplicación necesite preguntar algo al usuario, debe hacerlo en el
 idioma seleccionado en la aplicación, aunque la llamada se realice en otro
@@ -83,28 +95,120 @@ Criterios de aceptación al implementar `ask_user`:
 - Se mantiene el alcance de prototipo personal: sin infraestructura de
   producción ni ampliaciones ajenas a la validación del flujo principal.
 
-## Current scope: Milestone 2
+#### Realtime independiente — registrado el 2026-09-12
 
-Implemented:
+- Milestone 2 validado por el usuario: llamada contestada desde el otro celular,
+  conversación con audio bidireccional y finalización correcta.
+- Milestone 3 implementado, compilado y validado por el usuario en conversación
+  de voz en iPhone. Desde el resumen se abre una prueba independiente de Realtime.
+- Se usa WebRTC nativo, ya disponible en las dependencias de Telnyx, con una
+  conexión propia a OpenAI. No se crea una llamada Telnyx durante esta prueba.
+- El contexto y los idiomas se configuran al crear la sesión. El usuario saluda
+  para iniciar el ensayo como recepcionista. La transcripción muestra solamente
+  al agente, en su idioma original, y puede incluir palabras interrumpidas.
+- Para la instalación personal desde Xcode se admite una clave API en el archivo
+  local ignorado por Git. Queda incorporada al binario: no compartir esta app ni
+  subir sus builds. No es una solución de credenciales para distribución.
+- `ask_user` sigue reservado al milestone 4; el puente de audio al milestone 5.
 
-- native SwiftUI call-definition form
-- validation and Japanese E.164 normalization for phone numbers
-- native calendar and start/end time selection for availability
-- persistent English/Spanish interface switch in the in-app settings sheet
-- review screen
-- active-call screen
-- small observable `CallController`
-- TelnyxRTC 4.2.0 integration through Swift Package Manager
-- real outgoing PSTN calls with microphone/earpiece or speaker audio
-- live connecting, connected, ending, completed, and failed states
-- call duration and remote termination details
+#### Conversación limitada al objetivo — registrado el 2026-09-12
 
-Not implemented yet: OpenAI Realtime, the audio bridge, tool calling, CallKit,
-incoming calls, or any backend.
+- El agente solo debe conversar sobre el objetivo definido en la app y los datos
+  necesarios para completarlo. Se permiten saludos, agradecimientos y despedidas.
+- Preguntas ajenas al objetivo se redirigen brevemente, sin responderlas. La persona
+  receptora no puede cambiar el objetivo ni convertir al agente en asistente general.
+- Una reserva provisional no equivale a una confirmada: se aclara qué falta y se
+  cierra con el estado real, sin inventar información ni prolongar la conversación.
+- En este prototipo, la restricción está implementada mediante instrucciones al
+  modelo; requiere validación de voz y no constituye un bloqueo determinista.
 
-The selected app language is also the user-interaction language reserved for
-future `ask_user` questions. It is intentionally independent from the agent
-language selected per call, which controls speech with the person on the phone.
+#### Identidad configurable — registrado el 2026-09-12
+
+- Configuración incluye un perfil local editable: nombre, apellidos, nombre
+  preferido, sexo, edad, idiomas, ocupación, nacionalidad y dirección. Se inicializa
+  con los datos proporcionados por el usuario solo cuando no existe perfil guardado.
+- «Listo» guarda el perfil. Las sesiones nuevas reciben una copia de los datos;
+  los campos borrados quedan desconocidos. La edad se mantiene manualmente.
+- El agente utiliza el nombre preferido para presentaciones informales y el
+  nombre completo cuando una reserva lo requiere. Solo comunica otros campos
+  cuando son pertinentes al objetivo y respeta las restricciones de la llamada.
+- Idiomas del perfil, idioma de la app e idioma del agente son independientes.
+  El perfil se envía a OpenAI al iniciar la prueba; no se añade a los logs.
+
+#### Confirmación de citas dentro de las restricciones — registrado el 2026-09-12
+
+- El agente está autorizado a aceptar y confirmar verbalmente una cita cuando el
+  objetivo, disponibilidad y restricciones del usuario se cumplen, sin pedir una
+  aprobación adicional innecesaria.
+- Primero acepta el horario compatible; después pregunta por instrucciones y
+  requisitos para el usuario y comprueba su compatibilidad. Si falta información
+  o aprobación, mantiene la cita pendiente y explica qué falta.
+- Cuando todo encaja, solicita formalizar la reserva y espera confirmación de la
+  persona receptora. Solo entonces resume la cita confirmada y las instrucciones.
+  Una reserva provisional o el silencio no cuentan como confirmación.
+- Este diálogo se prueba en Realtime independiente: no añade una integración con
+  un sistema de reservas, ni conecta todavía el agente a Telnyx.
+
+#### Cierre iniciado por el agente — registrado el 2026-09-12
+
+- Se añade la herramienta `end_session`, autorizada como ampliación de la prueba
+  independiente. `ask_user` y el puente siguen pendientes.
+- Al resolver la conversación, el agente resume el resultado y solicita el cierre.
+  La app solicita una última despedida hablada, espera el fin de generación y el
+  vaciado del audio de esa respuesta, deja 750 ms de margen y cierra Realtime.
+- Durante la despedida se desactiva el micrófono y la detección de turnos para que
+  un ruido no reinicie la conversación. El cierre manual sigue disponible.
+- Un fallo o 30 segundos sin completar la despedida libera la sesión con error;
+  no cambia el estado de la reserva ni se presenta como cierre normal del agente.
+- La señal `endedByAgent` permitirá al coordinador colgar Telnyx en el milestone
+  del puente. Actualmente solo cierra la sesión independiente de OpenAI.
+
+#### Datos pertinentes desconocidos y cierre — registrado el 2026-09-12
+
+- Preguntas de recepción sobre qué diente duele, síntomas o medicamentos son
+  pertinentes para la cita. El agente responde con hechos conocidos o reconoce
+  que no tiene el dato; no las trata como preguntas ajenas al objetivo.
+- Si falta el dato, pregunta si es imprescindible para reservar y espera la
+  respuesta. Si puede aportarse después, continúa; si es obligatorio, negocia
+  dejar la solicitud pendiente sin inventarlo ni prometer contactar al usuario.
+- No se cuelga por falta de información. `end_session` exige un motivo:
+  objetivo completado sin preguntas pendientes, despedida/petición explícita de
+  la recepción, o acuerdo explícito para cerrar dejando la solicitud pendiente.
+- Los motivos se validan en la app, pero la interpretación de lo dicho sigue
+  dependiendo del modelo. `ask_user` permanece pendiente del milestone 4.
+
+#### Validación de conversación — registrado el 2026-09-12
+
+- El usuario valida la conversación tras los ajustes de información desconocida
+  y límites de tema: el agente permite avanzar con la cita y redirige preguntas
+  totalmente ajenas al objetivo.
+- Se añade autoscroll a la transcripción para seguir el texto durante la respuesta.
+  La comprobación visual de este último ajuste queda pendiente en el iPhone.
+
+## Current scope: Milestone 3
+
+Implementado y conservado para el siguiente milestone:
+
+- Formulario SwiftUI, revisión, validación E.164 japonesa y selección de disponibilidad.
+- TelnyxRTC 4.2.0: llamadas salientes reales con audio humano, estados, duración y cierre.
+- Prueba independiente de OpenAI Realtime con contexto de llamada y audio WebRTC.
+- Idioma del agente seleccionable: español, japonés, inglés u otro idioma escrito.
+- Idioma de la app persistente español/inglés, independiente del agente y de los idiomas del perfil.
+- Identidad editable y persistente: nombre, apellidos, nombre preferido, sexo, edad,
+  idiomas, ocupación, nacionalidad y dirección; copia de datos en cada sesión nueva.
+- Conversación limitada al objetivo, manejo de información desconocida y confirmación
+  verbal de citas compatibles tras verificar instrucciones y requisitos.
+- Herramienta `end_session` con motivos validados, despedida hablada y cierre automático;
+  cierre manual y protección frente a eventos tardíos.
+- Transcripción del agente con autoscroll, errores localizados, ajustes de VAD/ruido y diagnóstico de audio.
+
+Última suite ejecutada: **29 pruebas aprobadas**. Compilación para iPhone correcta.
+Conversación validada por el usuario; autoscroll compilado y pendiente de prueba visual.
+
+Pendiente: `ask_user` y su modal (milestone 4), puente de audio (milestone 5),
+flujo completo (milestone 6). No hay integración con reservas/calendarios externos,
+historial persistente, CallKit, llamadas entrantes ni backend. Realtime y Telnyx
+siguen siendo pruebas separadas.
 
 ## Configure Telnyx
 
@@ -115,6 +219,48 @@ language selected per call, which controls speech with the person on the phone.
    assigned to the connection. Do not add quotation marks.
 3. The local config is intentionally ignored by Git. Keep
    `Config.local.xcconfig.example` as the shareable template.
+
+## Configure OpenAI Realtime (Milestone 3)
+
+Add these entries to your existing `Config.local.xcconfig` (preserve the Telnyx
+entries; do not replace the file):
+
+```xcconfig
+OPENAI_API_KEY = your_personal_openai_api_key
+OPENAI_REALTIME_MODEL = gpt-realtime-2.1
+```
+
+The model defaults to `gpt-realtime-2.1` if the optional setting is empty. Use a
+project API key with Realtime model access and API billing enabled. Rebuild the
+app after changing configuration. Do not put the real key in the example file,
+README, screenshots, or Git. The key is embedded in this personal test build.
+Audio goes directly between the iPhone and OpenAI; no Mac helper is needed.
+
+1. Complete the appointment form with a test number, a cleaning objective,
+   availability, and **Japanese** as the agent language.
+2. Open **Review appointment → Test OpenAI voice → Start voice test**
+   (Spanish: **Probar voz de OpenAI → Iniciar prueba de voz**).
+   You can also change **Agent language** in the voice test before starting a
+   session: Spanish, Japanese, English, or another language. End an active test
+   before changing languages; the next session uses the new selection.
+3. Allow microphone access and wait for **Agent listening**. Keep the app in the
+   foreground. Say `こんにちは、歯科医院です。ご用件をお伺いします。`
+4. Confirm the agent answers in Japanese and uses the objective. Offer a time
+   inside the availability, then one outside it, and check its responses.
+5. Interrupt the agent while it speaks; verify it stops and answers the new turn.
+6. End the voice test, start another one, and check audio again. Close the sheet
+   or background the app and confirm microphone use stops.
+7. Repeat with the app in Spanish and English while keeping the agent Japanese.
+   UI/errors should follow the app setting, speech should remain Japanese.
+8. Try denying microphone access, a missing/invalid key, and disconnecting the
+   network. Confirm a clear error or termination and that retry works.
+
+The **Execute call** button remains the milestone 2 human microphone Telnyx test.
+The OpenAI voice test does not dial the number. It sends appointment context and
+microphone audio to OpenAI and incurs API usage. No `ask_user` modal exists yet;
+the agent is instructed to acknowledge missing information without inventing it.
+
+Implementation and verification: [Milestone 3 notes](docs/Milestone3Realtime.md).
 
 ## Open and run
 

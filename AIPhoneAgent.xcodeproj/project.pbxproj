@@ -21,6 +21,10 @@
 		10000000000000000000000C /* telnyx-webrtc-ios in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000001 /* telnyx-webrtc-ios */; };
 		10000000000000000000000D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000011 /* Localizable.xcstrings */; };
 		10000000000000000000000E /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000012 /* InfoPlist.xcstrings */; };
+		100000000000000000000020 /* RealtimeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000020; };
+		100000000000000000000021 /* OpenAIRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021; };
+		100000000000000000000022 /* RealtimeTestController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022; };
+		100000000000000000000023 /* RealtimeTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +56,10 @@
 		200000000000000000000010 /* AIPhoneAgent/Config/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AIPhoneAgent/Config/Info.plist; sourceTree = "<group>"; };
 		200000000000000000000011 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		200000000000000000000012 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		200000000000000000000020 /* RealtimeConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeConfiguration.swift; sourceTree = "<group>"; };
+		200000000000000000000021 /* OpenAIRealtimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIRealtimeClient.swift; sourceTree = "<group>"; };
+		200000000000000000000022 /* RealtimeTestController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTestController.swift; sourceTree = "<group>"; };
+		200000000000000000000023 /* RealtimeTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTestView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +116,7 @@
 		700000000000000000000004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000020 /* RealtimeConfiguration.swift */,
 				200000000000000000000003 /* CallDefinition.swift */,
 				200000000000000000000004 /* CallState.swift */,
 				20000000000000000000000C /* TelnyxConfiguration.swift */,
@@ -118,6 +127,7 @@
 		700000000000000000000005 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000022 /* RealtimeTestController.swift */,
 				200000000000000000000005 /* CallController.swift */,
 			);
 			path = Controllers;
@@ -126,6 +136,7 @@
 		700000000000000000000006 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000023 /* RealtimeTestView.swift */,
 				200000000000000000000006 /* CallDefinitionView.swift */,
 				200000000000000000000007 /* CallReviewView.swift */,
 				200000000000000000000008 /* ActiveCallView.swift */,
@@ -153,6 +164,7 @@
 		700000000000000000000009 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000021 /* OpenAIRealtimeClient.swift */,
 				20000000000000000000000D /* TelnyxCallService.swift */,
 			);
 			path = Services;
@@ -284,6 +296,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				100000000000000000000023 /* RealtimeTestView.swift in Sources */,
+				100000000000000000000022 /* RealtimeTestController.swift in Sources */,
+				100000000000000000000021 /* OpenAIRealtimeClient.swift in Sources */,
+				100000000000000000000020 /* RealtimeConfiguration.swift in Sources */,
 				100000000000000000000001 /* AIPhoneAgentApp.swift in Sources */,
 				100000000000000000000002 /* ContentView.swift in Sources */,
 				100000000000000000000003 /* CallDefinition.swift in Sources */,

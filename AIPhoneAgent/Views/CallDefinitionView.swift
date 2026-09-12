@@ -56,7 +56,7 @@ struct CallDefinitionView: View {
                     }
                 }
                 field("Agent language", icon: "bubble.left") {
-                    TextField("e.g. Japanese", text: $controller.definition.agentLanguage)
+                    AgentLanguagePicker(language: $controller.definition.agentLanguage)
                 }
                 field("Preferences & permissions", icon: "slider.horizontal.3") {
                     TextField("e.g. Choose a time within my availability. Ask me about any extra costs.", text: $controller.definition.additionalInstructions, axis: .vertical).lineLimit(2...6)
@@ -193,5 +193,29 @@ private struct AvailabilityPickerView: View {
             hour: timeParts.hour,
             minute: timeParts.minute
         )) ?? day
+    }
+}
+
+
+struct AgentLanguagePicker: View {
+    @Binding var language: String
+    private let presets = ["Spanish", "Japanese", "English"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Agent language", selection: Binding(
+                get: { presets.contains(language) ? language : "other" },
+                set: { language = $0 == "other" ? "" : $0 }
+            )) {
+                Text("Spanish").tag("Spanish")
+                Text("Japanese").tag("Japanese")
+                Text("English").tag("English")
+                Text("Other language").tag("other")
+            }
+            .pickerStyle(.menu)
+            if !presets.contains(language) {
+                TextField("e.g. Japanese", text: $language)
+            }
+        }
     }
 }

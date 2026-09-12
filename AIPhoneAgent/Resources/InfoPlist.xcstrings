@@ -31,13 +31,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ember uses the microphone for your Telnyx test call."
+            "value" : "Ember uses the microphone for your test calls and OpenAI voice conversations."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ember utiliza el micrófono para tu llamada de prueba con Telnyx."
+            "value" : "Ember utiliza el micrófono para tus llamadas de prueba y conversaciones de voz con OpenAI."
           }
         }
       }

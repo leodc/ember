@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CallReviewView: View {
     @Environment(CallController.self) private var controller
+    @State private var showsRealtimeTest = false
     private var definition: CallDefinition { controller.definition }
     var body: some View {
         ScrollView {
@@ -28,6 +29,14 @@ struct CallReviewView: View {
                     row("PREFERENCES & PERMISSIONS", value: definition.additionalInstructions)
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 24))
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Milestone 3 · Voice rehearsal").font(.headline)
+                    Text("Test the agent with these details before connecting it to a phone call.")
+                        .font(.subheadline).foregroundStyle(Ember.secondary)
+                    Button { showsRealtimeTest = true } label: {
+                        Label("Test OpenAI voice", systemImage: "waveform")
+                    }.buttonStyle(.bordered).frame(minHeight: 44)
+                }
                 EmberAssurance()
             }.padding(24).frame(maxWidth: 568).frame(maxWidth: .infinity)
         }
@@ -39,6 +48,9 @@ struct CallReviewView: View {
                     EmberPrimaryButton(title: "Execute call", icon: "phone") { controller.executeCall() }
                 }
             }
+        }
+        .sheet(isPresented: $showsRealtimeTest) {
+            RealtimeTestView(definition: definition)
         }
         .navigationTitle("Review appointment")
         .toolbar {

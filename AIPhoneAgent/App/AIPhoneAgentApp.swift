@@ -4,6 +4,10 @@ import Observation
 @MainActor
 @Observable
 final class AppSettings {
+    var userIdentity: UserIdentity {
+        didSet { userIdentity.save() }
+    }
+
     var language: AppLanguage {
         didSet {
             UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
@@ -11,6 +15,7 @@ final class AppSettings {
     }
 
     init(language: AppLanguage = .selected) {
+        self.userIdentity = UserIdentity.load()
         self.language = language
     }
 }

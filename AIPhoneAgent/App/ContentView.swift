@@ -150,7 +150,7 @@ struct EmberHomeView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showsSettings) {
-            LanguageSettingsView(initialLanguage: appSettings.language)
+            LanguageSettingsView(initialLanguage: appSettings.language, initialIdentity: appSettings.userIdentity)
         }
     }
     private func upcoming(_ title: LocalizedStringKey, icon: String, detail: LocalizedStringKey) -> some View {
@@ -199,8 +199,10 @@ private struct LanguageSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var appSettings
     @State private var draftLanguage: AppLanguage
+    @State private var draftIdentity: UserIdentity
 
-    init(initialLanguage: AppLanguage) {
+    init(initialLanguage: AppLanguage, initialIdentity: UserIdentity) {
+        _draftIdentity = State(initialValue: initialIdentity)
         _draftLanguage = State(initialValue: initialLanguage)
     }
 
@@ -218,19 +220,45 @@ private struct LanguageSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(Ember.secondary)
                 }
+                Section {
+                    identityField("Given name", text: $draftIdentity.givenName)
+                    identityField("Family name", text: $draftIdentity.familyName)
+                    identityField("Preferred name", text: $draftIdentity.preferredName)
+                    identityField("Sex", text: $draftIdentity.sex)
+                    identityField("Age in years", text: $draftIdentity.age, keyboard: .numberPad)
+                    identityField("Languages spoken", text: $draftIdentity.languages)
+                    identityField("Occupation", text: $draftIdentity.occupation)
+                    identityField("Nationality", text: $draftIdentity.nationality)
+                    identityField("Address", text: $draftIdentity.address)
+                } header: {
+                    Text("Your identity")
+                } footer: {
+                    Text("Saved on this iPhone and sent to OpenAI when you start a voice test. The agent uses these details only when relevant to your objective. Blank fields remain unknown. Age is updated manually.")
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
+                        appSettings.userIdentity = draftIdentity
                         appSettings.language = draftLanguage
                         dismiss()
                     }
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
+    }
+
+    private func identityField(_ label: LocalizedStringKey, text: Binding<String>,
+                               keyboard: UIKeyboardType = .default) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(.caption).foregroundStyle(Ember.secondary)
+            TextField(label, text: text, axis: .vertical)
+                .keyboardType(keyboard)
+                .lineLimit(1...4)
+        }
     }
 }
 

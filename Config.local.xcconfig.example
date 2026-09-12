@@ -3,3 +3,7 @@
 TELNYX_SIP_USER = your_sip_username
 TELNYX_PASSWORD = your_sip_password
 TELNYX_CALLER_NUMBER = +15551234567
+
+// Milestone 3: personal device only. This key is embedded in the installed app.
+OPENAI_API_KEY = 
+OPENAI_REALTIME_MODEL = gpt-realtime-2.1

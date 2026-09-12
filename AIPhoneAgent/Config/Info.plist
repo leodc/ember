@@ -21,9 +21,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Ember uses the microphone for your Telnyx test call.</string>
+	<string>Ember uses the microphone for your test calls and OpenAI voice conversations.</string>
 	<key>NSVoIPUsageDescription</key>
 	<string>Ember uses VoIP to place your Telnyx test call.</string>
+	<key>OpenAIAPIKey</key>
+	<string>$(OPENAI_API_KEY)</string>
+	<key>OpenAIRealtimeModel</key>
+	<string>$(OPENAI_REALTIME_MODEL)</string>
 	<key>TelnyxCallerNumber</key>
 	<string>$(TELNYX_CALLER_NUMBER)</string>
 	<key>TelnyxPassword</key>

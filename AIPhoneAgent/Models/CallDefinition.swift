@@ -34,6 +34,8 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
 }
 
 struct CallDefinition: Equatable, Sendable {
+    /// Snapshot of the editable profile for this session.
+    var userIdentity = UserIdentity()
     var contactName = ""
     var phoneNumber = ""
     var objective = ""
@@ -132,4 +134,53 @@ func appLocalized(_ key: String.LocalizationValue) -> String {
     let bundle = Bundle.main.path(forResource: language.rawValue, ofType: "lproj")
         .flatMap { Bundle(path: $0) } ?? .main
     return String(localized: key, bundle: bundle, locale: language.locale)
+}
+
+
+struct UserIdentity: Codable, Equatable, Sendable {
+    var givenName = ""
+    var familyName = ""
+    var preferredName = ""
+    var age = ""
+    var languages = ""
+    var occupation = ""
+    var nationality = ""
+    var address = ""
+    var sex = ""
+
+    static let storageKey = "userIdentity.v1"
+    static let initial = UserIdentity(
+        givenName: "Leonel David", familyName: "Castañeda Mendoza", preferredName: "Leo",
+        age: "36", languages: "Inglés y español", occupation: "Programador",
+        nationality: "Mexicano",
+        address: "240-0026, Kanagawa, Yokohama, Hodogaya, Gontazaka 2-11-0, Japón",
+        sex: "Hombre"
+    )
+
+    static func load(from defaults: UserDefaults = .standard) -> Self {
+        guard let data = defaults.data(forKey: storageKey) else { return .initial }
+        // Migrate existing profiles without losing edits or restoring intentionally cleared fields.
+        guard var fields = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return Self() }
+        if fields["sex"] == nil { fields["sex"] = initial.sex }
+        guard let migrated = try? JSONSerialization.data(withJSONObject: fields) else { return Self() }
+        return (try? JSONDecoder().decode(Self.self, from: migrated)) ?? Self()
+    }
+
+    func save(to defaults: UserDefaults = .standard) {
+        if let data = try? JSONEncoder().encode(self) { defaults.set(data, forKey: Self.storageKey) }
+    }
+
+    var agentContext: String {
+        let fields = [("Given name", givenName), ("Family name", familyName),
+                      ("Preferred name", preferredName), ("Age in years (manually maintained)", age),
+                      ("Languages the user speaks", languages), ("Occupation", occupation),
+                      ("Nationality", nationality), ("Address", address), ("Sex", sex)]
+        // JSON keeps arbitrary field values distinct from the instruction text.
+        let values = Dictionary(uniqueKeysWithValues: fields.map {
+            ($0.0, $0.1.trimmingCharacters(in: .whitespacesAndNewlines))
+        })
+        guard let data = try? JSONSerialization.data(withJSONObject: values, options: [.sortedKeys]),
+              let text = String(data: data, encoding: .utf8) else { return "{}" }
+        return text
+    }
 }

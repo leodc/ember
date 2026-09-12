@@ -72,6 +72,7 @@ struct ActiveCallView: View {
                                 .foregroundStyle(controller.isSpeakerEnabled ? .white : Ember.ink)
                                 .background(controller.isSpeakerEnabled ? Ember.orange : .white.opacity(0.85), in: Circle())
                         }
+                        .disabled(controller.callState != .connected)
                         .accessibilityLabel(controller.isSpeakerEnabled ? Text("Use earpiece") : Text("Use speaker"))
 
                         Button(action: controller.endCall) {

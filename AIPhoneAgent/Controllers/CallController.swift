@@ -21,12 +21,23 @@ final class CallController {
     private(set) var isSpeakerEnabled = false
     private(set) var userLanguage: AppLanguage
 
-    private let telnyxService: TelnyxCallService
+    private var telnyxService: (any CallingService)?
+    private let makeService: () -> any CallingService
+    private let loadConfiguration: () throws -> TelnyxConfiguration
+    private let requestPermission: (@escaping @Sendable (Bool) -> Void) -> Void
+    private var attemptID: UUID?
 
-    init(telnyxService: TelnyxCallService = TelnyxCallService()) {
-        self.telnyxService = telnyxService
+    init(
+        makeService: @escaping () -> any CallingService = { TelnyxCallService() },
+        loadConfiguration: @escaping () throws -> TelnyxConfiguration = { try TelnyxConfiguration.load() },
+        requestPermission: @escaping (@escaping @Sendable (Bool) -> Void) -> Void = {
+            AVAudioApplication.requestRecordPermission(completionHandler: $0)
+        }
+    ) {
+        self.makeService = makeService
+        self.loadConfiguration = loadConfiguration
+        self.requestPermission = requestPermission
         self.userLanguage = .selected
-        telnyxService.delegate = self
     }
 
     func goHome() { route = .home }
@@ -42,7 +53,8 @@ final class CallController {
     }
 
     func executeCall() {
-        guard definition.canReview else { return }
+        guard definition.canReview, callState == .idle else { return }
+        attemptID = UUID()
         callState = .preparing
         route = .active
         connectedAt = nil
@@ -52,7 +64,7 @@ final class CallController {
         userLanguage = .selected
 
         do {
-            let configuration = try TelnyxConfiguration.load()
+            let configuration = try loadConfiguration()
             requestMicrophoneAndStart(using: configuration)
         } catch {
             fail(error)
@@ -64,17 +76,22 @@ final class CallController {
             resetAfterCall()
             return
         }
+        guard attemptID != nil, callState != .ending else { return }
+        attemptID = nil
         callState = .ending
-        telnyxService.endCall()
+        if let telnyxService { telnyxService.endCall() }
+        else { finish(reason: nil) }
     }
 
     func closeCall() {
+        guard callState == .completed || isFailure else { return }
         resetAfterCall()
     }
 
     func toggleSpeaker() {
+        guard callState == .connected else { return }
         isSpeakerEnabled.toggle()
-        telnyxService.setSpeaker(enabled: isSpeakerEnabled)
+        telnyxService?.setSpeaker(enabled: isSpeakerEnabled)
     }
 
     func elapsedTime(at date: Date = .now) -> TimeInterval {
@@ -91,16 +108,21 @@ final class CallController {
     }
 
     private func requestMicrophoneAndStart(using configuration: TelnyxConfiguration) {
-        AVAudioApplication.requestRecordPermission { [weak self] granted in
+        let attempt = attemptID
+        let destination = definition.dialablePhoneNumber
+        requestPermission { [weak self] granted in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.attemptID == attempt, self.callState == .preparing else { return }
                 guard granted else {
                     self.fail(TelnyxCallControllerError.microphonePermissionDenied)
                     return
                 }
                 do {
-                    try self.telnyxService.startCall(
-                        destinationNumber: self.definition.dialablePhoneNumber,
+                    let service = self.makeService()
+                    self.telnyxService = service
+                    service.delegate = self
+                    try service.startCall(
+                        destinationNumber: destination,
                         callerName: "Ember",
                         configuration: configuration
                     )
@@ -112,6 +134,7 @@ final class CallController {
     }
 
     private func finish(reason: String?) {
+        releaseService()
         if let connectedAt {
             completedDuration = Date().timeIntervalSince(connectedAt)
         }
@@ -120,13 +143,21 @@ final class CallController {
     }
 
     private func fail(_ error: Error) {
+        releaseService()
         if let connectedAt {
             completedDuration = Date().timeIntervalSince(connectedAt)
         }
         callState = .failed(error.localizedDescription)
     }
 
+    private func releaseService() {
+        attemptID = nil
+        telnyxService?.delegate = nil
+        telnyxService = nil
+    }
+
     private func resetAfterCall() {
+        releaseService()
         callState = .idle
         connectedAt = nil
         completedDuration = 0
@@ -137,20 +168,24 @@ final class CallController {
 }
 
 extension CallController: TelnyxCallServiceDelegate {
-    func telnyxServiceDidStartDialing(_ service: TelnyxCallService) {
+    func telnyxServiceDidStartDialing(_ service: any CallingService) {
+        guard service === telnyxService, callState != .ending else { return }
         callState = .calling
     }
 
-    func telnyxServiceDidConnect(_ service: TelnyxCallService) {
+    func telnyxServiceDidConnect(_ service: any CallingService) {
+        guard service === telnyxService, callState != .ending else { return }
         if connectedAt == nil { connectedAt = .now }
         callState = .connected
     }
 
-    func telnyxService(_ service: TelnyxCallService, didEndWith reason: String?) {
+    func telnyxService(_ service: any CallingService, didEndWith reason: String?) {
+        guard service === telnyxService else { return }
         finish(reason: reason)
     }
 
-    func telnyxService(_ service: TelnyxCallService, didFailWith error: Error) {
+    func telnyxService(_ service: any CallingService, didFailWith error: Error) {
+        guard service === telnyxService else { return }
         fail(error)
     }
 }
@@ -159,6 +194,6 @@ enum TelnyxCallControllerError: LocalizedError {
     case microphonePermissionDenied
 
     var errorDescription: String? {
-        "Microphone access is required for this test call. Enable it in Settings and try again."
+        appLocalized("Microphone access is required for this test call. Enable it in Settings and try again.")
     }
 }

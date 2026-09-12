@@ -5,13 +5,20 @@ import TelnyxRTC
 
 @MainActor
 protocol TelnyxCallServiceDelegate: AnyObject {
-    func telnyxServiceDidStartDialing(_ service: TelnyxCallService)
-    func telnyxServiceDidConnect(_ service: TelnyxCallService)
-    func telnyxService(_ service: TelnyxCallService, didEndWith reason: String?)
-    func telnyxService(_ service: TelnyxCallService, didFailWith error: Error)
+    func telnyxServiceDidStartDialing(_ service: any CallingService)
+    func telnyxServiceDidConnect(_ service: any CallingService)
+    func telnyxService(_ service: any CallingService, didEndWith reason: String?)
+    func telnyxService(_ service: any CallingService, didFailWith error: Error)
 }
 
-final class TelnyxCallService: NSObject {
+protocol CallingService: AnyObject {
+    var delegate: (any TelnyxCallServiceDelegate)? { get set }
+    func startCall(destinationNumber: String, callerName: String, configuration: TelnyxConfiguration) throws
+    func endCall()
+    func setSpeaker(enabled: Bool)
+}
+
+final class TelnyxCallService: NSObject, CallingService {
     weak var delegate: (any TelnyxCallServiceDelegate)?
 
     private let client = TxClient()
@@ -154,12 +161,25 @@ extension TelnyxCallService: TxClientDelegate {
     func onSocketConnected() {}
 
     func onSocketDisconnected() {
-        guard pendingCall != nil else { return }
+        // SDK callbacks may arrive off the main queue; serialize call lifecycle changes.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.onSocketDisconnected() }
+            return
+        }
+        guard pendingCall != nil || activeCallID != nil else { return }
         pendingCall = nil
+        if let activeCallID { finish(callID: activeCallID) }
+        else { client.disconnect() }
         notify { $0.telnyxService(self, didFailWith: TelnyxCallServiceError.connectionLost) }
     }
 
     func onClientError(error: Error) {
+        // SDK callbacks may arrive off the main queue; serialize call lifecycle changes.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.onClientError(error: error) }
+            return
+        }
+        guard pendingCall != nil || activeCallID != nil else { return }
         pendingCall = nil
         if let activeCallID {
             guard finish(callID: activeCallID) else { return }
@@ -170,6 +190,11 @@ extension TelnyxCallService: TxClientDelegate {
     }
 
     func onClientReady() {
+        // SDK callbacks may arrive off the main queue; serialize call lifecycle changes.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.onClientReady() }
+            return
+        }
         placePendingCall()
     }
 
@@ -177,6 +202,11 @@ extension TelnyxCallService: TxClientDelegate {
     func onSessionUpdated(sessionId: String) {}
 
     func onCallStateUpdated(callState: TelnyxRTC.CallState, callId: UUID) {
+        // SDK callbacks may arrive off the main queue; serialize call lifecycle changes.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.onCallStateUpdated(callState: callState, callId: callId) }
+            return
+        }
         guard callId == activeCallID else { return }
 
         switch callState {
@@ -208,6 +238,11 @@ extension TelnyxCallService: TxClientDelegate {
     }
 
     func onRemoteCallEnded(callId: UUID, reason: CallTerminationReason?) {
+        // SDK callbacks may arrive off the main queue; serialize call lifecycle changes.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.onRemoteCallEnded(callId: callId, reason: reason) }
+            return
+        }
         guard callId == activeCallID, !endedCallIDs.contains(callId) else { return }
         if finish(callID: callId) {
             notify { $0.telnyxService(self, didEndWith: reason?.displayText) }
@@ -242,13 +277,13 @@ enum TelnyxCallServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .callAlreadyInProgress:
-            "A call is already in progress."
+            appLocalized("A call is already in progress.")
         case .connectionLost:
-            "The connection to Telnyx was lost."
+            appLocalized("The connection to Telnyx was lost.")
         case .callDropped(let reason):
-            "The call was dropped: \(reason)"
+            appLocalized("The call was dropped: \(reason)")
         case .audioDeviceUnavailable:
-            "The iPhone audio session could not be activated."
+            appLocalized("The iPhone audio session could not be activated.")
         }
     }
 }

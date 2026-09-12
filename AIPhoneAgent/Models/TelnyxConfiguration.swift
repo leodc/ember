@@ -40,7 +40,7 @@ enum TelnyxConfigurationError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .missingValues(let names):
-            "Configure \(names.joined(separator: ", ")) in Config.local.xcconfig."
+            appLocalized("Configure \(names.joined(separator: ", ")) in Config.local.xcconfig.")
         }
     }
 }

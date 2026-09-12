@@ -882,6 +882,66 @@
           }
         }
       }
+    },
+    "A call is already in progress." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya hay una llamada en curso."
+          }
+        }
+      }
+    },
+    "The connection to Telnyx was lost." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se perdió la conexión con Telnyx."
+          }
+        }
+      }
+    },
+    "The call was dropped: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La llamada se interrumpió: %@"
+          }
+        }
+      }
+    },
+    "The iPhone audio session could not be activated." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo activar el audio del iPhone."
+          }
+        }
+      }
+    },
+    "Microphone access is required for this test call. Enable it in Settings and try again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta llamada de prueba necesita acceso al micrófono. Actívalo en Ajustes e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Configure %@ in Config.local.xcconfig." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura %@ en Config.local.xcconfig."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

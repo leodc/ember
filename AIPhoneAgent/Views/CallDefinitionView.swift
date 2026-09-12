@@ -19,10 +19,6 @@ struct CallDefinitionView: View {
                 field("Phone number", icon: "phone") {
                     TextField("+81 …", text: $controller.definition.phoneNumber)
                         .keyboardType(.phonePad).textContentType(.telephoneNumber)
-                        .onChange(of: controller.definition.phoneNumber) { _, value in
-                            let formatted = PhoneNumberInput.display(value)
-                            if formatted != value { controller.definition.phoneNumber = formatted }
-                        }
                     if controller.definition.hasInvalidPhoneNumber {
                         Text("Enter a complete phone number, for example 070 1234 5678 or +81 70 1234 5678.")
                             .font(.caption).foregroundStyle(.red)

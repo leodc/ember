@@ -85,12 +85,11 @@ enum PhoneNumberInput {
 
     static func display(_ input: String) -> String {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalized = e164(trimmed)
-        let digits = digitsOnly(normalized)
-        let isInternational = trimmed.hasPrefix("+")
-            || trimmed.hasPrefix("＋")
-            || trimmed.hasPrefix("00")
-            || (!trimmed.hasPrefix("0") && digits.hasPrefix(japanCountryCode))
+        let raw = trimmed.lowercased().hasPrefix("tel:")
+            ? String(trimmed.dropFirst(4)).trimmingCharacters(in: .whitespacesAndNewlines) : trimmed
+        let isInternational = raw.hasPrefix("+") || raw.hasPrefix("＋")
+            || raw.hasPrefix("00") || raw.hasPrefix(japanCountryCode)
+        let digits = digitsOnly(isInternational ? e164(raw) : raw)
 
         if isInternational, digits.count == 12, digits.hasPrefix("81") {
             let national = String(digits.dropFirst(2))
@@ -104,8 +103,16 @@ enum PhoneNumberInput {
     }
 
     static func isPlausible(_ input: String) -> Bool {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = trimmed.lowercased().hasPrefix("tel:") ? String(trimmed.dropFirst(4)) : trimmed
+        let allowed = CharacterSet(charactersIn: "0123456789０１２３４５６７８９+＋()- .").union(.whitespaces)
+        let plusCount = raw.filter { $0 == "+" || $0 == "＋" }.count
+        let startsWithPlus = raw.trimmingCharacters(in: .whitespaces).hasPrefix("+")
+            || raw.trimmingCharacters(in: .whitespaces).hasPrefix("＋")
+        guard raw.unicodeScalars.allSatisfy(allowed.contains),
+              plusCount == 0 || (plusCount == 1 && startsWithPlus) else { return false }
         let value = e164(input)
-        guard value.hasPrefix("+") else { return false }
+        guard value.hasPrefix("+"), value.dropFirst().first != "0" else { return false }
         let count = digitsOnly(value).count
         return (8...15).contains(count)
     }
@@ -118,4 +125,11 @@ enum PhoneNumberInput {
         guard digits.hasPrefix("810") else { return digits }
         return "81" + digits.dropFirst(3)
     }
+}
+
+func appLocalized(_ key: String.LocalizationValue) -> String {
+    let language = AppLanguage.selected
+    let bundle = Bundle.main.path(forResource: language.rawValue, ofType: "lproj")
+        .flatMap { Bundle(path: $0) } ?? .main
+    return String(localized: key, bundle: bundle, locale: language.locale)
 }

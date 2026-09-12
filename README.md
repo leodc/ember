@@ -30,7 +30,7 @@ language selected per call, which controls speech with the person on the phone.
 
 1. In the Telnyx Mission Control Portal, create a Credential Connection and an
    Outbound Voice Profile, then assign the profile to the connection.
-2. Open `Config.local.xcconfig` and set `TELNYX_SIP_USER`, `TELNYX_PASSWORD`,
+2. Copy `Config.local.xcconfig.example` to `Config.local.xcconfig`, then set `TELNYX_SIP_USER`, `TELNYX_PASSWORD`,
    and `TELNYX_CALLER_NUMBER`. The caller number must be a Telnyx number
    assigned to the connection. Do not add quotation marks.
 3. The local config is intentionally ignored by Git. Keep

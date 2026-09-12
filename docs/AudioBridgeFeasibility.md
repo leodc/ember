@@ -6,8 +6,9 @@ WebRTC M150 dependency.
 
 ## Finding
 
-The required bridge is feasible with WebRTC's custom audio-device seam, but it
-is **not available through TelnyxRTC's current public API**.
+WebRTC's custom audio-device seam is a candidate path for the required bridge,
+but on-device feasibility has **not yet been experimentally validated**. The
+bridge is **not available through TelnyxRTC's current public API**.
 
 TelnyxRTC publicly exposes `Call.localStream` and `Call.remoteStream`. This is
 useful for track state and statistics, but `RTCAudioTrack` does not expose PCM

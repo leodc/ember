@@ -1,0 +1,5 @@
+// Copy this file to Config.local.xcconfig and fill in your Telnyx values.
+// The caller number must be a Telnyx number assigned to the Credential Connection.
+TELNYX_SIP_USER = your_sip_username
+TELNYX_PASSWORD = your_sip_password
+TELNYX_CALLER_NUMBER = +15551234567

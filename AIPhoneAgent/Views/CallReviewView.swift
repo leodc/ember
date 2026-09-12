@@ -30,9 +30,9 @@ struct CallReviewView: View {
         .safeAreaInset(edge: .bottom) {
             EmberFooter {
                 VStack(spacing: 12) {
-                    Text("Demo preview · No phone call will be placed.")
+                    Text("A real Telnyx call will be placed. Carrier charges may apply.")
                         .font(.caption).foregroundStyle(Ember.secondary)
-                    EmberPrimaryButton(title: "Preview call", icon: "phone") { controller.executeCallPlaceholder() }
+                    EmberPrimaryButton(title: "Execute call", icon: "phone") { controller.executeCall() }
                 }
             }
         }

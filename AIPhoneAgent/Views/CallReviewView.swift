@@ -11,17 +11,21 @@ struct CallReviewView: View {
                     Image(systemName: "calendar").font(.title).foregroundStyle(Ember.orange)
                         .padding(16).background(Ember.peach, in: RoundedRectangle(cornerRadius: 18))
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(definition.contactName.isEmpty ? "Your appointment" : definition.contactName).font(.title3.bold())
+                        if definition.contactName.isEmpty {
+                            Text("Your appointment").font(.title3.bold())
+                        } else {
+                            Text(definition.contactName).font(.title3.bold())
+                        }
                         Text(definition.phoneNumber).font(.subheadline).foregroundStyle(Ember.secondary)
                     }
                 }
                 VStack(alignment: .leading, spacing: 20) {
-                    row("APPOINTMENT FOR", definition.objective)
-                    row("YOUR AVAILABILITY", definition.availability.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Ask me before agreeing to a time" : definition.availability)
+                    row("APPOINTMENT FOR", value: definition.objective)
+                    row("YOUR AVAILABILITY", value: definition.availability, emptyFallback: "Ask me before agreeing to a time")
                     Divider()
-                    row("AGENT LANGUAGE", definition.agentLanguage)
+                    row("AGENT LANGUAGE", value: definition.agentLanguage)
                     Divider()
-                    row("PREFERENCES & PERMISSIONS", definition.additionalInstructions)
+                    row("PREFERENCES & PERMISSIONS", value: definition.additionalInstructions)
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 24))
                 EmberAssurance()
@@ -43,11 +47,18 @@ struct CallReviewView: View {
             }
         }
     }
-    private func row(_ label: String, _ value: String) -> some View {
+    private func row(
+        _ label: LocalizedStringKey,
+        value: String,
+        emptyFallback: LocalizedStringKey = "Not specified"
+    ) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(label).font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(Ember.secondary)
-            Text(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not specified" : value)
-                .font(.body).fixedSize(horizontal: false, vertical: true)
+            if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(emptyFallback).font(.body)
+            } else {
+                Text(value).font(.body)
+            }
         }
     }
 }

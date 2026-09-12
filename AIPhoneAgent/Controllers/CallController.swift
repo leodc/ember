@@ -19,11 +19,13 @@ final class CallController {
     private(set) var completedDuration: TimeInterval = 0
     private(set) var terminationReason: String?
     private(set) var isSpeakerEnabled = false
+    private(set) var userLanguage: AppLanguage
 
     private let telnyxService: TelnyxCallService
 
     init(telnyxService: TelnyxCallService = TelnyxCallService()) {
         self.telnyxService = telnyxService
+        self.userLanguage = .selected
         telnyxService.delegate = self
     }
 
@@ -47,6 +49,7 @@ final class CallController {
         completedDuration = 0
         terminationReason = nil
         isSpeakerEnabled = false
+        userLanguage = .selected
 
         do {
             let configuration = try TelnyxConfiguration.load()

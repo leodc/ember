@@ -49,7 +49,7 @@ struct EmberMark: View {
 }
 
 struct EmberPrimaryButton: View {
-    let title: String
+    let title: LocalizedStringKey
     var icon = "arrow.right"
     let action: () -> Void
     @Environment(\.isEnabled) private var isEnabled
@@ -89,12 +89,24 @@ struct EmberAssurance: View {
 
 struct EmberHomeView: View {
     @Environment(CallController.self) private var controller
+    @Environment(AppSettings.self) private var appSettings
+    @State private var showsSettings = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 HStack(spacing: 12) {
                     EmberMark(size: 42)
                     Text("Ember").font(.title2.weight(.bold))
+                    Spacer()
+                    Button {
+                        showsSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 44, height: 44)
+                            .background(.white.opacity(0.8), in: Circle())
+                    }
+                    .accessibilityLabel("Settings")
                 }
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Your calling assistant")
@@ -135,9 +147,13 @@ struct EmberHomeView: View {
             }
             .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 32)
             .frame(maxWidth: 568).frame(maxWidth: .infinity)
-        }.toolbar(.hidden, for: .navigationBar)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showsSettings) {
+            LanguageSettingsView(initialLanguage: appSettings.language)
+        }
     }
-    private func upcoming(_ title: String, icon: String, detail: String) -> some View {
+    private func upcoming(_ title: LocalizedStringKey, icon: String, detail: LocalizedStringKey) -> some View {
         Button {} label: {
             HStack(alignment: .top, spacing: 16) {
                 Image(systemName: icon).font(.title3)
@@ -159,14 +175,14 @@ struct EmberHomeView: View {
         }
         .buttonStyle(.plain)
         .disabled(true)
-        .accessibilityLabel("\(title). Coming soon.")
+        .accessibilityLabel(Text(title) + Text(". ") + Text("Coming soon"))
     }
     @ViewBuilder private var steps: some View {
         step("text.alignleft", "Your goal", "Tell me what you want to achieve.")
         step("slider.horizontal.3", "Your boundaries", "Set what I can do and what needs your approval.")
         step("bubble.left", "Your input", "If I don’t know something, I’ll ask you here.")
     }
-    private func step(_ icon: String, _ title: String, _ detail: String) -> some View {
+    private func step(_ icon: String, _ title: LocalizedStringKey, _ detail: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: icon).font(.body).foregroundStyle(Ember.orange)
                 .frame(width: 24, height: 24).accessibilityHidden(true)
@@ -179,4 +195,47 @@ struct EmberHomeView: View {
     }
 }
 
-#Preview { ContentView().environment(CallController()) }
+private struct LanguageSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var appSettings
+    @State private var draftLanguage: AppLanguage
+
+    init(initialLanguage: AppLanguage) {
+        _draftLanguage = State(initialValue: initialLanguage)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Your language") {
+                    Picker("App and questions", selection: $draftLanguage) {
+                        Text("English").tag(AppLanguage.english)
+                        Text("Spanish").tag(AppLanguage.spanish)
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("Ember will use this language for its screens and for questions it asks you. The phone conversation language is configured separately for each call.")
+                        .font(.footnote)
+                        .foregroundStyle(Ember.secondary)
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        appSettings.language = draftLanguage
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+#Preview {
+    ContentView()
+        .environment(CallController())
+        .environment(AppSettings())
+}

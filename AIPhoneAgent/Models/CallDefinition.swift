@@ -1,5 +1,38 @@
 import Foundation
 
+enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
+    case english = "en"
+    case spanish = "es"
+
+    static let storageKey = "appLanguage"
+
+    var id: String { rawValue }
+    var locale: Locale { Locale(identifier: rawValue) }
+
+    /// Language the Realtime agent must use whenever it addresses the app user.
+    var agentInstructionName: String {
+        switch self {
+        case .english: "English"
+        case .spanish: "Spanish"
+        }
+    }
+
+    static var selected: AppLanguage {
+        guard let value = UserDefaults.standard.string(forKey: storageKey) else {
+            return defaultLanguage(for: Locale.preferredLanguages.first)
+        }
+        return AppLanguage(rawValue: value) ?? defaultLanguage(for: Locale.preferredLanguages.first)
+    }
+
+    static func defaultLanguage(for preferredLanguage: String?) -> AppLanguage {
+        let languageCode = preferredLanguage?
+            .lowercased()
+            .split(whereSeparator: { $0 == "-" || $0 == "_" })
+            .first
+        return languageCode == "es" ? .spanish : .english
+    }
+}
+
 struct CallDefinition: Equatable, Sendable {
     var contactName = ""
     var phoneNumber = ""
@@ -18,11 +51,9 @@ struct CallDefinition: Equatable, Sendable {
         PhoneNumberInput.e164(phoneNumber)
     }
 
-    var phoneValidationMessage: String? {
-        guard !phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return PhoneNumberInput.isPlausible(phoneNumber)
-            ? nil
-            : "Enter a complete phone number, for example 070 1234 5678 or +81 70 1234 5678."
+    var hasInvalidPhoneNumber: Bool {
+        guard !phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        return !PhoneNumberInput.isPlausible(phoneNumber)
     }
 }
 

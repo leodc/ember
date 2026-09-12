@@ -23,8 +23,9 @@ struct CallDefinitionView: View {
                             let formatted = PhoneNumberInput.display(value)
                             if formatted != value { controller.definition.phoneNumber = formatted }
                         }
-                    if let message = controller.definition.phoneValidationMessage {
-                        Text(message).font(.caption).foregroundStyle(.red)
+                    if controller.definition.hasInvalidPhoneNumber {
+                        Text("Enter a complete phone number, for example 070 1234 5678 or +81 70 1234 5678.")
+                            .font(.caption).foregroundStyle(.red)
                     }
                 }
                 field("What is the appointment for?", icon: "calendar") {
@@ -36,10 +37,11 @@ struct CallDefinitionView: View {
                         showsAvailabilityPicker = true
                     } label: {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(controller.definition.availability.isEmpty
-                                 ? "Choose date and time"
-                                 : controller.definition.availability)
-                                .multilineTextAlignment(.leading)
+                            if controller.definition.availability.isEmpty {
+                                Text("Choose date and time")
+                            } else {
+                                Text(controller.definition.availability)
+                            }
                             Spacer(minLength: 12)
                             Image(systemName: "calendar").foregroundStyle(Ember.orange)
                         }
@@ -99,12 +101,12 @@ struct CallDefinitionView: View {
             }
         }
     }
-    private func field<Content: View>(_ title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+    private func field<Content: View>(_ title: LocalizedStringKey, icon: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: icon).font(.title3).frame(width: 24).padding(.top, 10).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title).font(.caption).foregroundStyle(Ember.secondary)
-                content().font(.body).focused($focused).accessibilityLabel(title)
+                content().font(.body).focused($focused).accessibilityLabel(Text(title))
             }.frame(maxWidth: .infinity, alignment: .leading)
         }.padding(16)
             .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 18))
@@ -114,6 +116,7 @@ struct CallDefinitionView: View {
 
 private struct AvailabilityPickerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @Binding var availability: String
     @State private var day: Date
     @State private var startTime: Date
@@ -134,7 +137,7 @@ private struct AvailabilityPickerView: View {
         NavigationStack {
             Form {
                 Section("Date") {
-                    DatePicker("Available day", selection: $day, in: Date.now..., displayedComponents: .date)
+                    DatePicker("Available day", selection: $day, in: Calendar.current.startOfDay(for: .now)..., displayedComponents: .date)
                         .datePickerStyle(.graphical)
                         .labelsHidden()
                 }
@@ -169,9 +172,17 @@ private struct AvailabilityPickerView: View {
     private var combinedEnd: Date { combined(day: day, time: endTime) }
 
     private var formattedAvailability: String {
-        let date = combinedStart.formatted(date: .complete, time: .omitted)
-        let start = combinedStart.formatted(date: .omitted, time: .shortened)
-        let end = combinedEnd.formatted(date: .omitted, time: .shortened)
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = locale
+        dateFormatter.dateStyle = .full
+        dateFormatter.timeStyle = .none
+        let timeFormatter = DateFormatter()
+        timeFormatter.locale = locale
+        timeFormatter.dateStyle = .none
+        timeFormatter.timeStyle = .short
+        let date = dateFormatter.string(from: combinedStart)
+        let start = timeFormatter.string(from: combinedStart)
+        let end = timeFormatter.string(from: combinedEnd)
         return "\(date), \(start)–\(end)"
     }
 

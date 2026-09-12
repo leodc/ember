@@ -10,6 +10,7 @@ Implemented:
 - native SwiftUI call-definition form
 - validation and Japanese E.164 normalization for phone numbers
 - native calendar and start/end time selection for availability
+- persistent English/Spanish interface switch in the in-app settings sheet
 - review screen
 - active-call screen
 - small observable `CallController`
@@ -20,6 +21,10 @@ Implemented:
 
 Not implemented yet: OpenAI Realtime, the audio bridge, tool calling, CallKit,
 incoming calls, or any backend.
+
+The selected app language is also the user-interaction language reserved for
+future `ask_user` questions. It is intentionally independent from the agent
+language selected per call, which controls speech with the person on the phone.
 
 ## Configure Telnyx
 

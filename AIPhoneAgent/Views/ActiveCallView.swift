@@ -11,8 +11,10 @@ struct ActiveCallView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 26) {
-                Text(isFinished ? "CALL FINISHED" : "LIVE CALL")
-                    .font(.caption.weight(.semibold)).tracking(2).foregroundStyle(Ember.secondary)
+                Group {
+                    if isFinished { Text("CALL FINISHED") } else { Text("LIVE CALL") }
+                }
+                .font(.caption.weight(.semibold)).tracking(2).foregroundStyle(Ember.secondary)
 
                 ZStack {
                     Circle().fill(statusColor.opacity(0.12)).frame(width: 174, height: 174)
@@ -20,8 +22,14 @@ struct ActiveCallView: View {
                 }
 
                 VStack(spacing: 8) {
-                    Text(controller.definition.contactName.isEmpty ? "Your call" : controller.definition.contactName)
-                        .font(.largeTitle.bold()).multilineTextAlignment(.center)
+                    Group {
+                        if controller.definition.contactName.isEmpty {
+                            Text("Your call")
+                        } else {
+                            Text(controller.definition.contactName)
+                        }
+                    }
+                    .font(.largeTitle.bold()).multilineTextAlignment(.center)
                     Text(controller.definition.phoneNumber).foregroundStyle(Ember.secondary)
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         Text(durationText(controller.elapsedTime(at: context.date)))
@@ -30,7 +38,7 @@ struct ActiveCallView: View {
                     }
                 }
 
-                Label(controller.callState.displayName, systemImage: statusIcon)
+                Label { statusText } icon: { Image(systemName: statusIcon) }
                     .font(.subheadline.weight(.semibold)).foregroundStyle(statusColor)
                     .padding(.horizontal, 20).padding(.vertical, 12)
                     .background(statusColor.opacity(0.10), in: Capsule())
@@ -64,7 +72,7 @@ struct ActiveCallView: View {
                                 .foregroundStyle(controller.isSpeakerEnabled ? .white : Ember.ink)
                                 .background(controller.isSpeakerEnabled ? Ember.orange : .white.opacity(0.85), in: Circle())
                         }
-                        .accessibilityLabel(controller.isSpeakerEnabled ? "Use earpiece" : "Use speaker")
+                        .accessibilityLabel(controller.isSpeakerEnabled ? Text("Use earpiece") : Text("Use speaker"))
 
                         Button(action: controller.endCall) {
                             Label("End call", systemImage: "phone.down.fill")
@@ -97,6 +105,21 @@ struct ActiveCallView: View {
         case .ending: return "phone.down"
         case .completed: return "checkmark.circle.fill"
         default: return "phone"
+        }
+    }
+
+    private var statusText: Text {
+        switch controller.callState {
+        case .idle: Text("Ready")
+        case .preparing: Text("Preparing")
+        case .calling: Text("Connecting")
+        case .connected: Text("Connected")
+        case .listening: Text("Agent listening")
+        case .speaking: Text("Agent speaking")
+        case .waitingForUser: Text("Waiting for user")
+        case .ending: Text("Ending")
+        case .completed: Text("Ended")
+        case .failed(let message): Text("Failed") + Text(": \(message)")
         }
     }
 

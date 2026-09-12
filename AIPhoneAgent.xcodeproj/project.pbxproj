@@ -19,6 +19,7 @@
 		10000000000000000000000A /* TelnyxConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* TelnyxConfiguration.swift */; };
 		10000000000000000000000B /* TelnyxCallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* TelnyxCallService.swift */; };
 		10000000000000000000000C /* telnyx-webrtc-ios in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000001 /* telnyx-webrtc-ios */; };
+		10000000000000000000000D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000011 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +49,7 @@
 		20000000000000000000000E /* Config.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.local.xcconfig; sourceTree = "<group>"; };
 		20000000000000000000000F /* Config.local.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.local.xcconfig.example; sourceTree = "<group>"; };
 		200000000000000000000010 /* AIPhoneAgent/Config/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AIPhoneAgent/Config/Info.plist; sourceTree = "<group>"; };
+		200000000000000000000011 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +89,7 @@
 				700000000000000000000005 /* Controllers */,
 				700000000000000000000009 /* Services */,
 				700000000000000000000006 /* Views */,
+				70000000000000000000000B /* Resources */,
 			);
 			path = AIPhoneAgent;
 			sourceTree = "<group>";
@@ -163,6 +166,14 @@
 			name = Configuration;
 			sourceTree = "<group>";
 		};
+		70000000000000000000000B /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000011 /* Localizable.xcstrings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -229,6 +240,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				es,
 				Base,
 			);
 			mainGroup = 700000000000000000000001;
@@ -250,6 +262,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10000000000000000000000D /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

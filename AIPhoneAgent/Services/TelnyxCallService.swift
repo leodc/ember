@@ -1,4 +1,6 @@
 import Foundation
+import AVFoundation
+import OSLog
 import TelnyxRTC
 
 @MainActor
@@ -13,10 +15,15 @@ final class TelnyxCallService: NSObject {
     weak var delegate: (any TelnyxCallServiceDelegate)?
 
     private let client = TxClient()
+    private let audioLogger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "AIPhoneAgent",
+        category: "TelnyxAudio"
+    )
     private var currentCall: Call?
     private var pendingCall: PendingCall?
     private var activeCallID: UUID?
     private var endedCallIDs = Set<UUID>()
+    private var isAudioSessionActive = false
 
     override init() {
         super.init()
@@ -24,6 +31,9 @@ final class TelnyxCallService: NSObject {
     }
 
     deinit {
+        if isAudioSessionActive {
+            client.disableAudioSession(audioSession: AVAudioSession.sharedInstance())
+        }
         client.delegate = nil
         client.disconnect()
     }
@@ -93,10 +103,37 @@ final class TelnyxCallService: NSObject {
         }
     }
 
+    private func activateAudioSession() -> Bool {
+        guard !isAudioSessionActive else { return true }
+        let audioSession = AVAudioSession.sharedInstance()
+
+        // TelnyxRTC uses manual WebRTC audio. Without CallKit there is no system
+        // callback to enable it, so the app must activate it once the call is live.
+        client.enableAudioSession(audioSession: audioSession)
+        currentCall?.unmuteAudio()
+        isAudioSessionActive = client.isAudioDeviceEnabled
+
+        let inputs = audioSession.currentRoute.inputs.map(\.portType.rawValue).joined(separator: ",")
+        let outputs = audioSession.currentRoute.outputs.map(\.portType.rawValue).joined(separator: ",")
+        audioLogger.info(
+            "Audio activation: enabled=\(self.isAudioSessionActive, privacy: .public) category=\(audioSession.category.rawValue, privacy: .public) mode=\(audioSession.mode.rawValue, privacy: .public) inputs=\(inputs, privacy: .public) outputs=\(outputs, privacy: .public)"
+        )
+
+        return isAudioSessionActive
+    }
+
+    private func deactivateAudioSession() {
+        guard isAudioSessionActive else { return }
+        client.disableAudioSession(audioSession: AVAudioSession.sharedInstance())
+        isAudioSessionActive = false
+        audioLogger.info("Audio session deactivated")
+    }
+
     @discardableResult
     private func finish(callID: UUID) -> Bool {
         guard !endedCallIDs.contains(callID) else { return false }
         endedCallIDs.insert(callID)
+        deactivateAudioSession()
         if activeCallID == callID {
             currentCall = nil
             activeCallID = nil
@@ -145,7 +182,15 @@ extension TelnyxCallService: TxClientDelegate {
         switch callState {
         case .NEW, .CONNECTING, .RINGING, .RECONNECTING:
             notify { $0.telnyxServiceDidStartDialing(self) }
-        case .ACTIVE, .HELD:
+        case .ACTIVE:
+            guard activateAudioSession() else {
+                if finish(callID: callId) {
+                    notify { $0.telnyxService(self, didFailWith: TelnyxCallServiceError.audioDeviceUnavailable) }
+                }
+                return
+            }
+            notify { $0.telnyxServiceDidConnect(self) }
+        case .HELD:
             notify { $0.telnyxServiceDidConnect(self) }
         case .DONE(let reason):
             if finish(callID: callId) {
@@ -192,6 +237,7 @@ enum TelnyxCallServiceError: LocalizedError {
     case callAlreadyInProgress
     case connectionLost
     case callDropped(String)
+    case audioDeviceUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -201,6 +247,8 @@ enum TelnyxCallServiceError: LocalizedError {
             "The connection to Telnyx was lost."
         case .callDropped(let reason):
             "The call was dropped: \(reason)"
+        case .audioDeviceUnavailable:
+            "The iPhone audio session could not be activated."
         }
     }
 }

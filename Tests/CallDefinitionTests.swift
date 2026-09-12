@@ -2,6 +2,20 @@ import XCTest
 @testable import AIPhoneAgent
 
 final class CallDefinitionTests: XCTestCase {
+    func testSpanishAppLanguageProvidesSpanishAgentInstruction() {
+        XCTAssertEqual(AppLanguage.spanish.agentInstructionName, "Spanish")
+    }
+
+    func testInitialLanguageFollowsSpanishDeviceLanguage() {
+        XCTAssertEqual(AppLanguage.defaultLanguage(for: "es-MX"), .spanish)
+    }
+
+    func testInitialLanguageUsesEnglishForOtherDeviceLanguages() {
+        XCTAssertEqual(AppLanguage.defaultLanguage(for: "en-US"), .english)
+        XCTAssertEqual(AppLanguage.defaultLanguage(for: "ja-JP"), .english)
+        XCTAssertEqual(AppLanguage.defaultLanguage(for: nil), .english)
+    }
+
     func testRequiredFieldsPermitReview() {
         let definition = CallDefinition(
             phoneNumber: "+811234567890",

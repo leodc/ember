@@ -12,13 +12,13 @@ struct ActiveCallView: View {
         ScrollView {
             VStack(spacing: 26) {
                 Group {
-                    if isFinished { Text("CALL FINISHED") } else { Text("LIVE CALL") }
+                    if isFinished { Text("Phone call finished") } else { Text("Phone call · You speak") }
                 }
-                .font(.caption.weight(.semibold)).tracking(2).foregroundStyle(Ember.secondary)
+                .font(.subheadline.weight(.semibold)).foregroundStyle(Ember.secondary)
 
                 ZStack {
-                    Circle().fill(statusColor.opacity(0.12)).frame(width: 174, height: 174)
-                    EmberMark(size: 126).shadow(color: Ember.orange.opacity(0.18), radius: 24, y: 10)
+                    Circle().fill(statusColor.opacity(0.12)).frame(width: 136, height: 136)
+                    EmberMark(size: 88).shadow(color: Ember.orange.opacity(0.18), radius: 24, y: 10)
                 }
 
                 VStack(spacing: 8) {
@@ -30,7 +30,7 @@ struct ActiveCallView: View {
                         }
                     }
                     .font(.largeTitle.bold()).multilineTextAlignment(.center)
-                    Text(controller.definition.phoneNumber).foregroundStyle(Ember.secondary)
+                    Text(PhoneNumberInput.display(controller.definition.phoneNumber)).foregroundStyle(Ember.secondary)
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         Text(durationText(controller.elapsedTime(at: context.date)))
                             .font(.system(.title3, design: .monospaced).weight(.medium))
@@ -43,15 +43,25 @@ struct ActiveCallView: View {
                     .padding(.horizontal, 20).padding(.vertical, 12)
                     .background(statusColor.opacity(0.10), in: Capsule())
 
+                if case .failed(let message) = controller.callState {
+                    Text(message).font(.subheadline).foregroundStyle(Ember.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(20).frame(maxWidth: .infinity)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+                }
                 if let reason = controller.terminationReason, !reason.isEmpty {
                     Text(reason).font(.subheadline).foregroundStyle(Ember.secondary)
                         .multilineTextAlignment(.center)
                 }
 
+                if isFinished {
+                    Text("Ending the call does not confirm an appointment. Check the outcome with the recipient.")
+                        .font(.subheadline).foregroundStyle(Ember.secondary).multilineTextAlignment(.center)
+                }
                 if !isFinished {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Milestone 2 test", systemImage: "iphone.radiowaves.left.and.right").font(.headline)
-                        Text("This call uses your iPhone microphone and its current audio output. Keep Ember open during the test.")
+                        Label("You’re making this call", systemImage: "iphone.radiowaves.left.and.right").font(.headline)
+                        Text("Once connected, you speak directly to the recipient. Keep Ember open. The AI agent does not join this call.")
                             .font(.subheadline).foregroundStyle(Ember.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding(20)
@@ -63,7 +73,7 @@ struct ActiveCallView: View {
         .safeAreaInset(edge: .bottom) {
             EmberFooter {
                 if isFinished {
-                    EmberPrimaryButton(title: "Back to setup", icon: "arrow.left") { controller.closeCall() }
+                    EmberPrimaryButton(title: "Back to details", icon: "arrow.left") { controller.closeCall() }
                 } else {
                     HStack(spacing: 14) {
                         Button(action: controller.toggleSpeaker) {
@@ -77,8 +87,8 @@ struct ActiveCallView: View {
 
                         Button(action: controller.endCall) {
                             Label("End call", systemImage: "phone.down.fill")
-                                .font(.headline).frame(maxWidth: .infinity).frame(height: 58)
-                                .foregroundStyle(.white).background(Color.red, in: RoundedRectangle(cornerRadius: 20))
+                                .font(.headline).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity).frame(minHeight: 58).padding(.horizontal, 12)
+                                .foregroundStyle(.white).background(Color(red: 0.75, green: 0.12, blue: 0.16), in: RoundedRectangle(cornerRadius: 20))
                         }
                         .buttonStyle(.plain).disabled(controller.callState == .ending)
                     }
@@ -89,11 +99,11 @@ struct ActiveCallView: View {
     }
 
     private var statusColor: Color {
-        if case .failed = controller.callState { return .red }
+        if case .failed = controller.callState { return Ember.critical }
         switch controller.callState {
-        case .connected: return .green
+        case .connected: return Ember.positive
         case .completed: return Ember.secondary
-        default: return Ember.orange
+        default: return Ember.accentText
         }
     }
 
@@ -120,7 +130,7 @@ struct ActiveCallView: View {
         case .waitingForUser: Text("Waiting for user")
         case .ending: Text("Ending")
         case .completed: Text("Ended")
-        case .failed(let message): Text("Failed") + Text(": \(message)")
+        case .failed: Text("Couldn’t connect")
         }
     }
 

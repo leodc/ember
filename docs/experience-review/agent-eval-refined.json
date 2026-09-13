@@ -1,0 +1,154 @@
+{
+  "cases" : [
+    {
+      "case" : "unknown-medication",
+      "turns" : [
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Soy Ember, una asistente de IA que llama en nombre de Alex. Para responder eso correctamente, voy a comprobarlo con Alex un momento.",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENXK7oohf3Nh5PiiGuoen",
+              "phase" : "commentary",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            },
+            {
+              "arguments" : "{\"question\":\"¿Tomas algún medicamento actualmente? Si es así, escribe cuáles. Si no, responde \\\"No tomo medicamentos\\\".\",\"suggestedAnswers\":[]}",
+              "call_id" : "call_3Qn77PORtFDsKCRv",
+              "id" : "item_ENXK8dRu43vP2CA7YCgJH",
+              "name" : "ask_user",
+              "status" : "completed",
+              "type" : "function_call"
+            }
+          ],
+          "recipient" : "Buenos días. Para reservar la limpieza, ¿Alex toma algún medicamento?",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 2112,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 2112
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3478
+            },
+            "input_tokens" : 3478,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 45,
+              "text_tokens" : 126
+            },
+            "output_tokens" : 126,
+            "total_tokens" : 3604
+          }
+        }
+      ]
+    },
+    {
+      "case" : "cannot-wait",
+      "turns" : [
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Necesito comprobar ese dato con Alex un momento.",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENXK9ln47xUGdUM7peSMH",
+              "phase" : "commentary",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            },
+            {
+              "arguments" : "{\"question\":\"La clínica pregunta si tomas algún medicamento. ¿Puedes decirme cuáles tomas, o decir que no tomas ninguno?\",\"originalQuestion\":\"¿Alex toma algún medicamento?\",\"suggestedAnswers\":[]}",
+              "call_id" : "call_JYHrKK1l9tH5MZ42",
+              "id" : "item_ENXKAD0qjSeO0mMnWntFs",
+              "name" : "ask_user",
+              "status" : "completed",
+              "type" : "function_call"
+            }
+          ],
+          "recipient" : "¿Alex toma algún medicamento?",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 3456,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 3456
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3470
+            },
+            "input_tokens" : 3470,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 31,
+              "text_tokens" : 105
+            },
+            "output_tokens" : 105,
+            "total_tokens" : 3575
+          }
+        },
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Sí, sigo aquí. Estoy esperando la respuesta de Alex sobre los medicamentos, y aún no ha llegado.\n\nSi no pueden esperar, ¿prefieren dejar la solicitud pendiente o que volvamos a intentarlo más tarde?",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENXKByGrj5DZwCLowIWCW",
+              "phase" : "final_answer",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            }
+          ],
+          "recipient" : "¿Sigue ahí? No puedo esperar mucho tiempo.",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 3456,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 3456
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3623
+            },
+            "input_tokens" : 3623,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 30,
+              "text_tokens" : 77
+            },
+            "output_tokens" : 77,
+            "total_tokens" : 3700
+          }
+        }
+      ]
+    }
+  ],
+  "date" : "2026-09-13T05:45:52Z",
+  "fictional_data" : true,
+  "modality" : "text",
+  "model" : "gpt-realtime-2.1"
+}

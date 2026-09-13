@@ -18,6 +18,16 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     }
 
     static var selected: AppLanguage {
+        #if DEBUG
+        // Keep fixture errors and prompts in the gallery language without changing saved settings.
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--visual-review") {
+            if let index = arguments.firstIndex(of: "--review-language"), arguments.indices.contains(index + 1) {
+                return AppLanguage(rawValue: arguments[index + 1]) ?? .spanish
+            }
+            return .spanish
+        }
+        #endif
         guard let value = UserDefaults.standard.string(forKey: storageKey) else {
             return defaultLanguage(for: Locale.preferredLanguages.first)
         }
@@ -44,10 +54,12 @@ struct CallDefinition: Equatable, Sendable {
     var additionalInstructions = ""
 
     var canReview: Bool {
-        PhoneNumberInput.isPlausible(phoneNumber)
-            && !objective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !objective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !agentLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
+    /// Rehearsal needs an objective and language; dialing additionally needs a valid destination.
+    var canPlaceCall: Bool { canReview && PhoneNumberInput.isPlausible(phoneNumber) }
 
     var dialablePhoneNumber: String {
         PhoneNumberInput.e164(phoneNumber)

@@ -17,7 +17,7 @@ struct ContentView: View {
             .toolbarBackground(Ember.background, for: .navigationBar)
             .navigationBarTitleDisplayMode(.inline)
         }
-        .tint(Ember.orange)
+        .tint(Ember.ink)
         .preferredColorScheme(.light)
     }
 }
@@ -27,24 +27,20 @@ enum Ember {
     static let ink = Color(red: 0.15, green: 0.14, blue: 0.16)
     static let secondary = Color(red: 0.43, green: 0.40, blue: 0.40)
     static let orange = Color(red: 0.93, green: 0.28, blue: 0.07)
+    static let positive = Color(red: 0.13, green: 0.40, blue: 0.27)
+    static let critical = Color(red: 0.72, green: 0.12, blue: 0.16)
+    static let accentText = Color(red: 0.68, green: 0.25, blue: 0.10)
     static let peach = Color(red: 1, green: 0.90, blue: 0.80)
     static let gradient = LinearGradient(colors: [Color(red: 1, green: 0.56, blue: 0.13), orange], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
-// Resolution-independent brand mark inspired by the supplied reference.
 struct EmberMark: View {
     var size: CGFloat = 48
     var body: some View {
-        ZStack {
-            Image(systemName: "bubble.right").resizable().scaledToFit()
-                .foregroundStyle(Ember.gradient)
-            Image(systemName: "flame.fill").resizable().scaledToFit()
-                .foregroundStyle(Ember.gradient)
-                .frame(width: size * 0.33, height: size * 0.46)
-                .offset(y: -size * 0.035)
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+        Image("EmberIcon").resizable().scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.24))
+            .accessibilityHidden(true)
     }
 }
 
@@ -56,13 +52,12 @@ struct EmberPrimaryButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Text(title).font(.headline)
+                Text(title).font(.headline).fixedSize(horizontal: false, vertical: true)
                 Image(systemName: icon).font(.body.weight(.semibold))
             }
-            .frame(maxWidth: .infinity).padding(.vertical, 19)
-            .foregroundStyle(.white)
-            .background(Ember.gradient, in: RoundedRectangle(cornerRadius: 20))
-            .opacity(isEnabled ? 1 : 0.45)
+            .frame(maxWidth: .infinity, minHeight: 24).padding(.vertical, 18).padding(.horizontal, 18)
+            .foregroundStyle(isEnabled ? .white : Ember.secondary)
+            .background(isEnabled ? Ember.ink : Ember.ink.opacity(0.10), in: RoundedRectangle(cornerRadius: 18))
         }.buttonStyle(.plain)
     }
 }
@@ -73,7 +68,7 @@ struct EmberFooter<Content: View>: View {
         content.frame(maxWidth: 520)
             .padding(.horizontal, 24).padding(.vertical, 12)
             .frame(maxWidth: .infinity)
-            .background(Ember.background.opacity(0.98))
+            .background(Ember.background)
     }
 }
 
@@ -96,106 +91,62 @@ struct EmberHomeView: View {
             VStack(alignment: .leading, spacing: 28) {
                 HStack(spacing: 12) {
                     EmberMark(size: 42)
-                    Text("Ember").font(.title2.weight(.bold))
+                    Text("Ember").font(.title2.bold())
                     Spacer()
-                    Button {
-                        showsSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.body.weight(.semibold))
-                            .frame(width: 44, height: 44)
-                            .background(.white.opacity(0.8), in: Circle())
-                    }
-                    .accessibilityLabel("Settings")
+                    Button { showsSettings = true } label: {
+                        Image(systemName: "person.crop.circle").font(.title2)
+                            .frame(width: 48, height: 48).background(.white, in: Circle())
+                    }.buttonStyle(.plain).accessibilityLabel("Profile and settings")
+                        .accessibilityIdentifier("home-settings")
                 }
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Your calling assistant")
-                        .font(.subheadline).foregroundStyle(Ember.secondary)
-                    Text("I’ll help you\nmake the call.")
-                        .font(.largeTitle.weight(.bold)).tracking(-1.2)
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("A little help with the conversation.")
+                        .font(.largeTitle.bold()).tracking(-0.8)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Tell me what you need. I’ll follow your instructions and check with you when I need an answer.")
-                        .font(.body).foregroundStyle(Ember.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 6)
-                }
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("What would you like to do?").font(.headline).padding(.bottom, 4)
-                    Button(action: controller.startCall) {
-                    HStack(spacing: 16) {
-                        Image(systemName: "calendar").font(.title2).foregroundStyle(Ember.orange)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Set up an appointment").font(.headline).foregroundStyle(Ember.ink)
-                            Text("Find a time that works for you.")
-                                .font(.subheadline).foregroundStyle(Ember.secondary)
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "arrow.right").font(.body.weight(.semibold))
-                            .foregroundStyle(.white).padding(12)
-                            .background(Ember.gradient, in: Circle())
-                    }
-                    .padding(20).background(Ember.peach.opacity(0.7), in: RoundedRectangle(cornerRadius: 24))
-                    .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Ember.orange.opacity(0.10)))
-                    }.buttonStyle(.plain)
-                    upcoming("Ask a question", icon: "questionmark.bubble", detail: "Get information from a business.")
-                    upcoming("Change a reservation", icon: "calendar.badge.clock", detail: "Adjust an existing booking.")
-                    upcoming("Follow up", icon: "phone.arrow.up.right", detail: "Check on a request or delivery.")
+                    Text("Prepare an appointment, try it with Ember, and stay in control of every decision.")
+                        .foregroundStyle(Ember.secondary).lineSpacing(3)
                 }
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("You’re in control").font(.headline)
-                    VStack(alignment: .leading, spacing: 20) { steps }
-                }.padding(.top, 8)
-            }
-            .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 32)
-            .frame(maxWidth: 568).frame(maxWidth: .infinity)
+                    Image(systemName: "calendar.badge.clock").font(.largeTitle).foregroundStyle(Ember.orange)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your next appointment").font(.title2.bold())
+                        Text("Set the goal, your availability, and what Ember can agree to.")
+                            .foregroundStyle(Ember.secondary)
+                    }
+                    EmberPrimaryButton(title: controller.definition.objective.isEmpty ? "Prepare an appointment" : "Continue preparing") {
+                        controller.startCall()
+                    }.accessibilityIdentifier("home-prepare")
+                }.padding(24).background(Ember.peach.opacity(0.6), in: RoundedRectangle(cornerRadius: 28))
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Two ways to try Ember").font(.headline)
+                    feature("waveform", "Rehearse with AI", "Play the receptionist. Ember speaks, asks for your input, and follows your written instructions.")
+                    Divider()
+                    feature("phone", "Make a phone call", "Call a real number and speak yourself. The AI voice is not connected to phone calls yet.")
+                }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 24))
+                Label("Your answers and instructions stay in your hands.", systemImage: "hand.raised")
+                    .font(.subheadline).foregroundStyle(Ember.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }.padding(24).frame(maxWidth: 568).frame(maxWidth: .infinity)
         }
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showsSettings) {
             LanguageSettingsView(initialLanguage: appSettings.language, initialIdentity: appSettings.userIdentity)
         }
     }
-    private func upcoming(_ title: LocalizedStringKey, icon: String, detail: LocalizedStringKey) -> some View {
-        Button {} label: {
-            HStack(alignment: .top, spacing: 16) {
-                Image(systemName: icon).font(.title3)
-                    .frame(width: 26, height: 28).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title).font(.subheadline.weight(.semibold))
-                    Text(detail).font(.footnote)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("Coming soon").font(.caption.weight(.medium))
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(Ember.ink.opacity(0.05), in: Capsule())
-                        .padding(.top, 3)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .foregroundStyle(Ember.secondary)
-            .padding(18)
-            .background(.white.opacity(0.45), in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Ember.ink.opacity(0.06)))
-        }
-        .buttonStyle(.plain)
-        .disabled(true)
-        .accessibilityLabel(Text(title) + Text(". ") + Text("Coming soon"))
-    }
-    @ViewBuilder private var steps: some View {
-        step("text.alignleft", "Your goal", "Tell me what you want to achieve.")
-        step("slider.horizontal.3", "Your boundaries", "Set what I can do and what needs your approval.")
-        step("bubble.left", "Your input", "If I don’t know something, I’ll ask you here.")
-    }
-    private func step(_ icon: String, _ title: LocalizedStringKey, _ detail: LocalizedStringKey) -> some View {
+    private func feature(_ icon: String, _ title: LocalizedStringKey, _ detail: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon).font(.body).foregroundStyle(Ember.orange)
-                .frame(width: 24, height: 24).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.subheadline.weight(.semibold))
+            Image(systemName: icon).font(.title3).foregroundStyle(Ember.orange)
+                .frame(width: 26).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.headline)
                 Text(detail).font(.subheadline).foregroundStyle(Ember.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 
-private struct LanguageSettingsView: View {
+struct LanguageSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var appSettings
     @State private var draftLanguage: AppLanguage
@@ -224,23 +175,36 @@ private struct LanguageSettingsView: View {
                     identityField("Given name", text: $draftIdentity.givenName)
                     identityField("Family name", text: $draftIdentity.familyName)
                     identityField("Preferred name", text: $draftIdentity.preferredName)
+                } header: {
+                    Text("How Ember introduces you")
+                } footer: {
+                    Text("Use the name you want the recipient to hear. All profile details are optional.")
+                }
+                Section {
+                    DisclosureGroup("More details") {
                     identityField("Sex", text: $draftIdentity.sex)
                     identityField("Age in years", text: $draftIdentity.age, keyboard: .numberPad)
                     identityField("Languages spoken", text: $draftIdentity.languages)
                     identityField("Occupation", text: $draftIdentity.occupation)
                     identityField("Nationality", text: $draftIdentity.nationality)
                     identityField("Address", text: $draftIdentity.address)
+                    }
                 } header: {
                     Text("Your identity")
                 } footer: {
                     Text("Saved on this iPhone and sent to OpenAI when you start a voice test. The agent uses these details only when relevant to your objective. Blank fields remain unknown. Age is updated manually.")
                 }
             }
-            .navigationTitle("Settings")
+            .scrollContentBackground(.hidden)
+            .background(Ember.background)
+            .navigationTitle("Profile and settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button("Save") {
                         appSettings.userIdentity = draftIdentity
                         appSettings.language = draftLanguage
                         dismiss()
@@ -248,7 +212,9 @@ private struct LanguageSettingsView: View {
                 }
             }
         }
+        .tint(Ember.ink).preferredColorScheme(.light)
         .presentationDetents([.large])
+        .interactiveDismissDisabled(draftLanguage != appSettings.language || draftIdentity != appSettings.userIdentity)
     }
 
     private func identityField(_ label: LocalizedStringKey, text: Binding<String>,

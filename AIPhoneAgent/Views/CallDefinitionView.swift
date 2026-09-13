@@ -9,15 +9,15 @@ struct CallDefinitionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Let’s find a time\nthat works for you.").font(.largeTitle.weight(.bold)).tracking(-1)
-                    Text("Tell me who to call and when you’re free. I’ll follow your preferences and ask if I need anything else.")
+                    Text("Let’s prepare your appointment.").font(.largeTitle.weight(.bold)).tracking(-1)
+                    Text("Start with what you need. You can rehearse with Ember before making a real phone call.")
                         .font(.subheadline).foregroundStyle(Ember.secondary)
                 }.padding(.bottom, 12)
                 field("Who should I call?", icon: "person") {
                     TextField("Name or business", text: $controller.definition.contactName).textContentType(.name)
                 }
-                field("Phone number", icon: "phone") {
-                    TextField("+81 …", text: $controller.definition.phoneNumber)
+                field("Phone number · Optional for rehearsal", icon: "phone") {
+                    TextField("e.g. +81 70 1234 5678", text: $controller.definition.phoneNumber)
                         .keyboardType(.phonePad).textContentType(.telephoneNumber)
                     if controller.definition.hasInvalidPhoneNumber {
                         Text("Enter a complete phone number, for example 070 1234 5678 or +81 70 1234 5678.")
@@ -28,32 +28,24 @@ struct CallDefinitionView: View {
                     TextField("e.g. A dental cleaning", text: $controller.definition.objective, axis: .vertical).lineLimit(1...4)
                 }
                 field("When are you available?", icon: "clock") {
-                    Button {
-                        focused = false
-                        showsAvailabilityPicker = true
-                    } label: {
-                        HStack(alignment: .firstTextBaseline) {
-                            if controller.definition.availability.isEmpty {
-                                Text("Choose date and time")
-                            } else {
-                                Text(controller.definition.availability)
-                            }
-                            Spacer(minLength: 12)
-                            Image(systemName: "calendar").foregroundStyle(Ember.orange)
-                        }
-                        .foregroundStyle(controller.definition.availability.isEmpty ? Ember.secondary : Ember.ink)
-                    }
-                    .buttonStyle(.plain)
-
+                    TextField("e.g. Wednesday morning, or Friday after 14:00", text: $controller.definition.availability, axis: .vertical)
+                        .lineLimit(2...4)
                     HStack {
-                        Text("Optional. I’ll ask before agreeing if this is blank.")
-                            .font(.caption).foregroundStyle(Ember.secondary)
-                        Spacer()
+                        Button {
+                            focused = false
+                            showsAvailabilityPicker = true
+                        } label: {
+                            Label("Choose a date and time", systemImage: "calendar")
+                                .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+                        }.buttonStyle(.plain)
+                        Spacer(minLength: 8)
                         if !controller.definition.availability.isEmpty {
                             Button("Clear") { controller.definition.availability = "" }
-                                .font(.caption.weight(.medium))
+                                .font(.subheadline).frame(minHeight: 44)
                         }
                     }
+                    Text("Leave blank and Ember will ask before accepting a time.")
+                        .font(.caption).foregroundStyle(Ember.secondary)
                 }
                 field("Agent language", icon: "bubble.left") {
                     AgentLanguagePicker(language: $controller.definition.agentLanguage)
@@ -70,10 +62,10 @@ struct CallDefinitionView: View {
                 EmberFooter {
                     VStack(spacing: 8) {
                         if !controller.definition.canReview {
-                            Text("Add a phone number, appointment purpose, and language to continue.")
+                            Text("Add an appointment purpose and agent language to continue.")
                                 .font(.caption).foregroundStyle(Ember.secondary)
                         }
-                        EmberPrimaryButton(title: "Review appointment") {
+                        EmberPrimaryButton(title: "Review details") {
                             controller.reviewCall()
                         }.disabled(!controller.definition.canReview)
                     }
@@ -82,7 +74,7 @@ struct CallDefinitionView: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: focused)
-        .navigationTitle("Set up an appointment")
+        .navigationTitle("Prepare appointment")
         .sheet(isPresented: $showsAvailabilityPicker) {
             AvailabilityPickerView(availability: $controller.definition.availability)
         }
@@ -101,7 +93,7 @@ struct CallDefinitionView: View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: icon).font(.title3).frame(width: 24).padding(.top, 10).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.caption).foregroundStyle(Ember.secondary)
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Ember.secondary)
                 content().font(.body).focused($focused).accessibilityLabel(Text(title))
             }.frame(maxWidth: .infinity, alignment: .leading)
         }.padding(16)
@@ -110,7 +102,7 @@ struct CallDefinitionView: View {
     }
 }
 
-private struct AvailabilityPickerView: View {
+struct AvailabilityPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Binding var availability: String
@@ -132,6 +124,12 @@ private struct AvailabilityPickerView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if !availability.isEmpty {
+                    Section("Current availability") {
+                        Text(availability).foregroundStyle(Ember.secondary)
+                        Text("Using this time replaces the current availability.").font(.footnote)
+                    }
+                }
                 Section("Date") {
                     DatePicker("Available day", selection: $day, in: Calendar.current.startOfDay(for: .now)..., displayedComponents: .date)
                         .datePickerStyle(.graphical)
@@ -146,6 +144,7 @@ private struct AvailabilityPickerView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden).background(Ember.background)
             .navigationTitle("Availability")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -153,7 +152,7 @@ private struct AvailabilityPickerView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Use this time") {
+                    Button("Save") {
                         availability = formattedAvailability
                         dismiss()
                     }
@@ -161,6 +160,7 @@ private struct AvailabilityPickerView: View {
                 }
             }
         }
+        .tint(Ember.ink).preferredColorScheme(.light)
         .presentationDetents([.large])
     }
 

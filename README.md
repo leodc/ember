@@ -13,24 +13,176 @@ alcance o en los criterios de aceptación, conservando el texto original como
 referencia histórica.
 
 - [Estado consolidado del POC y próximo milestone](docs/POCStateAndMilestone4.md)
+- [Revisión integral de experiencia, icono y agente](docs/AppExperienceReview.md)
 - [Decisiones vigentes](#decisiones-vigentes)
-- [Estado de implementación](#current-scope-milestone-3)
+- [Estado de implementación](#current-scope-milestone-4)
 - [Configuración de Telnyx](#configure-telnyx)
 - [Ejecución y prueba manual](#open-and-run)
 - [Especificación original completa](#especificación-original-completa)
 
 ### Referencia para continuar el desarrollo
 
-El **milestone 3 está validado por el usuario para la conversación de voz**. El
-siguiente paso es `ask_user` (milestone 4), todavía separado de Telnyx.
+El **milestone 4 está validado y completado por el usuario el 2026-09-13**.
+Incluye `ask_user`, transcripción de ambas voces, instrucciones escritas con
+interrupción inmediata y la revisión integral de interfaz y comportamiento del agente.
 
-Antes de implementarlo, leer [Estado vigente del POC y preparación del milestone 4](docs/POCStateAndMilestone4.md):
-consolida idiomas, identidad, confirmación de citas, límites conversacionales,
-cierre automático, parámetros de audio y criterios de aceptación. La verificación
-visual del autoscroll sigue pendiente. La especificación original se conserva al
-final como referencia histórica; las decisiones vigentes tienen precedencia.
+El siguiente paso es el **milestone 5: validar e implementar el puente de audio
+entre Telnyx y OpenAI Realtime**. Ambos servicios siguen separados en esta versión.
+Leer el [estado consolidado](docs/POCStateAndMilestone4.md) y la
+[revisión de experiencia](docs/AppExperienceReview.md) para continuar.
+Las notas fechadas anteriores conservan sus resultados y pendientes históricos;
+la aceptación de cierre registrada a continuación prevalece como estado del milestone.
 
 ### Decisiones vigentes
+
+#### Milestone 4 validado y completado — 2026-09-13
+
+El usuario acepta el milestone y autoriza su cierre, commit y push. Quedan concluidos:
+
+- `ask_user` con opciones, texto libre y aprobación de horarios alternativos.
+- Transcripción del agente y del interlocutor, e instrucciones escritas que
+  interrumpen y se aplican de inmediato.
+- Rediseño de pantallas, textos, estados y nuevo icono de Ember.
+- Ajustes del agente para una conversación breve y respetuosa con recepción,
+  y cierre que distingue una reserva confirmada de una solicitud pendiente.
+- Documentación, capturas, evaluación del modelo con texto y 54 regresiones
+  aprobadas; compilaciones Debug y Release correctas.
+
+Esta aceptación cierra el milestone 4. No convierte las comprobaciones no ejecutadas
+por el agente en pruebas realizadas: el informe conserva los límites de audio real,
+reproducción física del bloqueo y revisión táctil. Son seguimiento técnico para
+las siguientes validaciones, no bloqueos abiertos de este milestone.
+
+
+#### Recorrido, identidad visual y experiencia de recepción — 2026-09-13
+
+- El inicio ofrece una acción principal: preparar la cita. Se eliminan acciones
+  todavía no disponibles y se explican las dos experiencias actuales del POC.
+- **Ensayar con Ember** usa Realtime; tú interpretas a recepción y no se marca
+  ningún número. Requiere objetivo e idioma. **Llamada telefónica · Hablas tú**
+  usa Telnyx y requiere además un teléfono válido; la IA aún no participa.
+- Disponibilidad admite texto libre con varios días o un selector de fecha y
+  franja. Si se deja vacía, Ember debe consultar antes de aceptar un horario.
+- La revisión muestra nombre de reserva, objetivo, disponibilidad e instrucciones.
+  El perfil tiene Guardar/Cancelar y los datos opcionales se pueden desplegar.
+- La interfaz comparte el nuevo icono, fondo marfil, texto carbón y acentos naranja.
+  Se mejoran contraste, botones multilínea, estados de envío/error y resultado final.
+  Terminar un ensayo o una llamada no se presenta como prueba de reserva.
+- Para quien atiende: presentación breve como IA, una pregunta a la vez, atención
+  a correcciones, consulta natural al usuario y respeto cuando no puede esperar
+  o pide terminar. No se prometen transferencias ni llamadas automáticas posteriores.
+- Medicamentos, síntomas y datos personales abiertos usan preguntas libres; no
+  se sugieren respuestas incompletas. Se mantiene la consulta de horarios alternativos
+  mediante `ask_user` y la interrupción inmediata con instrucciones escritas.
+- La despedida recibe el motivo validado de `end_session`. Resume lo realmente
+  confirmado o indica que queda pendiente, agradece y termina después del audio.
+  El motivo declarado por el modelo no demuestra por sí solo una reserva.
+- Se han evaluado ocho situaciones con el modelo real en modalidad de texto,
+  con repeticiones tras los ajustes. Esto no valida audio ni el puente telefónico.
+  Evidencias, capturas, límites y cómo repetirlo: [revisión integral](docs/AppExperienceReview.md).
+
+
+#### Respuestas, instrucciones y lectura durante la sesión — 2026-09-12
+
+- `ask_user` presenta una pregunta principal, el original desplegable y una lista
+  vertical de opciones. Incluso con una sola opción, seleccionar **no envía**:
+  hay que pulsar **Enviar respuesta**. No se preselecciona ninguna respuesta.
+- De una a diez opciones comparten tarjetas de altura flexible; la lista se desplaza
+  y el envío permanece accesible. **Escribir otra respuesta** abre un campo
+  multilínea; si no hay sugerencias, ese campo aparece directamente.
+- **Dar una nueva instrucción** cambia al editor de instrucciones sin confundirlo
+  con la respuesta a la pregunta. **Volver a la pregunta** conserva lo escrito.
+  Enviar una instrucción sustituye la consulta pendiente y aplica la interrupción
+  inmediata ya acordada. Solo escribir o cambiar de modo no interrumpe al agente.
+- La conversación distingue interlocutor, agente y tus instrucciones mediante
+  etiquetas, iconos y fondos. Los detalles de la llamada son desplegables; el campo
+  de instrucciones y el cierre permanecen accesibles en la parte inferior.
+- El seguimiento de la transcripción se agrupa cada 200 ms y se pausa mientras
+  `ask_user` está abierto. Al desplazar manualmente el historial se detiene el
+  seguimiento; **Últimos mensajes** permite retomarlo.
+- Se revisan contraste, áreas táctiles, contenido largo, teclado y Dynamic Type
+  con las vistas reales y un transporte local de prueba. Existe una galería
+  `--visual-review` solo en Debug, sin micrófono, red ni consumo de API.
+- Se investiga el bloqueo táctil reportado en iPhone: los logs mostraron repetidas
+  actualizaciones por fotograma antes de `ask_user`. Se elimina el desplazamiento
+  por cada delta; esta corrección y la prueba de estrés local no sustituyen la
+  confirmación con voz real en el iPhone afectado. Ver [evaluación](docs/VisualReview.md).
+
+
+#### Instrucciones del usuario durante la sesión — registrado el 2026-09-12
+
+- Se amplía el POC para permitir instrucciones escritas durante la conversación,
+  desde la pantalla de voz o el modal `ask_user`. El usuario eligió **interrumpir
+  y aplicar enseguida**, en lugar de esperar a que termine el turno del agente.
+- «Interrumpir y enviar» cancela la generación actual, corta el audio pendiente y
+  envía la indicación por un canal diferenciado de la voz de recepción. El agente
+  retoma en su idioma configurado. Se pueden corregir datos, cambiar disponibilidad
+  o permisos, pedir otra pregunta y solicitar el cierre de la conversación.
+- Una instrucción puede actualizar el objetivo de esa llamada; la recepción sigue
+  sin poder modificarlo. Se conservan las restricciones no modificadas. Las
+  instrucciones se muestran como «Tu instrucción» y no cambian el perfil guardado.
+- Si hay una pregunta pendiente, se devuelve `superseded_by_instruction` sin
+  inventar una respuesta. El agente la reevalúa con la nueva indicación y vuelve a
+  preguntar si el dato sigue siendo necesario. El texto en edición se comparte
+  entre ambas pantallas para conservarlo cuando aparece un modal.
+- Se admite interrumpir incluso la despedida antes de desconectar. Se añade el
+  motivo `user_requested_end` para una petición de cierre escrita por el usuario;
+  su interpretación depende del modelo. No se puede reabrir una sesión ya terminada.
+- El campo se habilita cuando Realtime está conectado. Solo se envía una instrucción
+  a la vez; cierre manual, fallo y segundo plano descartan envíos pendientes.
+- Comportamiento de voz pendiente de validación en iPhone. Detalles y prueba manual
+  en [Instrucciones durante la sesión](docs/LiveUserInstructions.md).
+
+#### Transcripción de ambas voces — registrado el 2026-09-12
+
+- Se añade la transcripción del audio entrante a la prueba Realtime existente.
+  La pantalla distingue **Interlocutor** y **Agente** y conserva el idioma original
+  de cada voz. Los rótulos siguen el idioma de la app; no se añade traducción.
+- Se usa `audio.input.transcription` con `gpt-4o-mini-transcribe`, sin forzar idioma
+  de entrada. La transcripción es auxiliar, asíncrona y puede contener errores;
+  no sustituye al audio que escucha el modelo ni se utiliza como resultado de `ask_user`.
+- Cada turno entrante reserva su lugar antes de recibir el texto, evitando que una
+  transcripción tardía aparezca después de la respuesta del agente. Un fallo al
+  transcribir un turno se muestra en esa fila y no termina la sesión de voz.
+- En este milestone «Interlocutor» es quien habla por el micrófono en el ensayo.
+  Transcribir al receptor de una llamada Telnyx requiere el puente del milestone 5.
+- Transcripción en memoria, sin persistencia ni contenido en logs. La transcripción
+  entrante añade consumo de API. Validación de voz y visual pendiente en iPhone.
+
+#### Horarios alternativos mediante `ask_user` — registrado el 2026-09-12
+
+- El usuario validó el flujo de medicamentos: pregunta, respuesta escrita y
+  continuación correctas. Detectó que una oferta fuera de disponibilidad se
+  detenía en «no puedo confirmar» sin consultarle.
+- La disponibilidad define los horarios que el agente puede aceptar autónomamente.
+  Ante una alternativa concreta fuera de ella, debe aclarar fecha/hora, pedir un
+  momento y consultar al usuario mediante `ask_user`, en el idioma de la app.
+- La aceptación explícita autoriza solo ese horario durante esa sesión; se mantienen
+  las demás restricciones y se espera la confirmación de reserva de la clínica.
+  Si el usuario rechaza, se buscan otras opciones. No se modifica el perfil ni la
+  disponibilidad guardada. Una respuesta previa sobre medicamentos no autoriza horarios.
+- Se aclara el prompt y la descripción de la herramienta. La corrección del caso
+  de horario alternativo queda pendiente de repetición en voz por el usuario.
+
+#### `ask_user` implementado — registrado el 2026-09-12
+
+- El milestone 4 añade `ask_user` a la prueba independiente de Realtime, junto a
+  `end_session`. Sustituye el manejo provisional de datos desconocidos descrito
+  en las notas anteriores; esas notas conservan el estado histórico del milestone 3.
+- Ante información pertinente desconocida o una aprobación necesaria, el agente
+  pide un momento y abre una pregunta en el idioma de la app. Los datos conocidos
+  y autorizados no requieren un modal adicional.
+- El usuario elige una sugerencia o escribe texto libre. La app conserva la
+  herramienta pendiente y envía la respuesta con su `call_id`, una sola vez.
+  El agente continúa en el idioma de la llamada, sin ampliar el significado.
+- La pantalla permite terminar la prueba mientras espera. Una petición explícita
+  de cierre de recepción cancela la pregunta sin inventar una respuesta y conserva
+  la despedida hablada. No se permite cerrar por objetivo completado con una
+  pregunta pendiente. La interpretación y el idioma del texto generado dependen
+  del modelo y requieren validación en voz.
+- Las respuestas solo viven en esta sesión; no modifican el perfil ni se registran
+  en logs. No hay puente Telnyx ni cambios de infraestructura.
+- Implementación, verificación y prueba manual: [Milestone 4](docs/Milestone4AskUser.md).
 
 #### Idioma de la aplicación e idioma del agente — registrado el 2026-09-12
 
@@ -185,7 +337,7 @@ Criterios de aceptación al implementar `ask_user`:
 - Se añade autoscroll a la transcripción para seguir el texto durante la respuesta.
   La comprobación visual de este último ajuste queda pendiente en el iPhone.
 
-## Current scope: Milestone 3
+## Current scope: Milestone 4
 
 Implementado y conservado para el siguiente milestone:
 
@@ -200,15 +352,19 @@ Implementado y conservado para el siguiente milestone:
   verbal de citas compatibles tras verificar instrucciones y requisitos.
 - Herramienta `end_session` con motivos validados, despedida hablada y cierre automático;
   cierre manual y protección frente a eventos tardíos.
-- Transcripción del agente con autoscroll, errores localizados, ajustes de VAD/ruido y diagnóstico de audio.
+- Transcripción de agente e interlocutor con autoscroll, errores localizados, ajustes de VAD/ruido y diagnóstico de audio.
+- `ask_user` con modal localizado, sugerencias, texto libre, espera y resultado asociado a su sesión.
+- Instrucciones escritas del usuario durante la sesión, con interrupción inmediata y reanudación.
 
-Última suite ejecutada: **29 pruebas aprobadas**. Compilación para iPhone correcta.
-Conversación validada por el usuario; autoscroll compilado y pendiente de prueba visual.
+El milestone 4 queda **validado y completado por el usuario el 2026-09-13**.
+La revisión de pantallas y del agente está documentada en [Revisión integral](docs/AppExperienceReview.md).
+Verificación técnica: **54 pruebas aprobadas, 0 fallos**, compilaciones Debug para
+simulador y Release para iPhone correctas (Release sin firma). Los últimos ajustes
+de presentación se recompilaron después de las regresiones.
 
-Pendiente: `ask_user` y su modal (milestone 4), puente de audio (milestone 5),
-flujo completo (milestone 6). No hay integración con reservas/calendarios externos,
-historial persistente, CallKit, llamadas entrantes ni backend. Realtime y Telnyx
-siguen siendo pruebas separadas.
+Siguiente milestone: **5 — puente de audio**; después, **6 — flujo completo**.
+No hay integración con reservas/calendarios externos, historial persistente,
+CallKit, llamadas entrantes ni backend. Realtime y Telnyx siguen separados.
 
 ## Configure Telnyx
 
@@ -257,8 +413,8 @@ Audio goes directly between the iPhone and OpenAI; no Mac helper is needed.
 
 The **Execute call** button remains the milestone 2 human microphone Telnyx test.
 The OpenAI voice test does not dial the number. It sends appointment context and
-microphone audio to OpenAI and incurs API usage. No `ask_user` modal exists yet;
-the agent is instructed to acknowledge missing information without inventing it.
+microphone audio to OpenAI and incurs API usage. Relevant unknown information
+now opens the `ask_user` modal. See the [milestone 4 test](docs/Milestone4AskUser.md).
 
 Implementation and verification: [Milestone 3 notes](docs/Milestone3Realtime.md).
 
@@ -269,23 +425,30 @@ your development team if Xcode requests it, then Run.
 
 Manual test:
 
-1. Tap **Set up an appointment** on the Ember home screen.
-   Three additional call types are examples marked **Coming soon** and disabled.
-2. Enter a phone number, request, agent language, availability, and instructions.
-3. Tap **Review appointment**, check the summary, then tap **Execute call**.
-4. Allow microphone access when prompted. Use a physical iPhone and keep Ember
-   in the foreground for this milestone.
-5. Answer the destination phone, verify two-way audio, optionally toggle the
-   speaker, and end the call from either device.
-6. Confirm Ember shows the completed state and duration, then return to setup.
+1. Tap **Prepare an appointment** on the Ember home screen.
+2. Enter the appointment purpose and agent language. Add availability, permissions
+   and contact details as needed. The phone number is optional for rehearsal.
+3. Tap **Review details** and check the booking name and constraints.
+4. For AI: tap **Rehearse with Ember**, read the instructions, then **Start rehearsal**.
+   Allow the microphone and play the receptionist. Ask for an unknown fact, offer
+   an alternative appointment, answer `ask_user`, and try **Interrupt and send**.
+   Verify the transcript distinguishes both voices and your written instruction.
+5. For a real phone call: add a valid destination, then use **Call this number**
+   in the **Phone call · You speak** card. Allow the microphone, answer the other
+   phone, and verify two-way human audio. Ember's AI does not join this call yet.
+6. End the session and check the result, then return to the details. Use a physical
+   iPhone for audio validation and keep Ember in the foreground.
+
+For visual review without calls, microphone or API usage, use the Debug gallery
+and scenarios in [App experience review](docs/AppExperienceReview.md).
 
 Phone numbers should use E.164 format, for example `+819012345678`. Telnyx may
 restrict destinations until the account, number, and outbound profile are
 fully configured. CallKit is deliberately deferred because the milestone only
 requires a foreground outgoing-call proof.
 
-The interface uses warm ivory surfaces, amber accents, a scalable speech-bubble
-and flame mark, Dynamic Type, accessible field labels, and scrolling layouts.
+The interface uses warm ivory surfaces, charcoal primary actions, orange accents,
+a generated speech-bubble/flame app icon, Dynamic Type, labeled fields and scrolling layouts.
 Primary actions remain above the bottom safe area. The initial design uses
 a consistent light appearance. The installed display name is Ember; the Xcode
 scheme remains AIPhoneAgent.

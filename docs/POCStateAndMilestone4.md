@@ -1,6 +1,9 @@
-# Estado vigente del POC y preparación del milestone 4
+# Estado vigente del POC — milestone 4 completado
 
-Consolidado el **2026-09-12**, a partir del código y las pruebas del usuario.
+Consolidado el **2026-09-12**, actualizado el **2026-09-13** tras la revisión de experiencia.
+El usuario da por validado y completado el milestone 4 el 2026-09-13.
+El siguiente paso es el milestone 5, puente de audio. La aceptación no amplía
+la cobertura técnica observada, conservada en el informe de revisión.
 Leer junto con las decisiones vigentes del [README](../README.md). Este documento
 resume el estado actual; las notas cronológicas de milestone 3 conservan su valor
 histórico, pero sus pendientes antiguos no sustituyen este estado consolidado.
@@ -12,23 +15,25 @@ histórico, pero sus pendientes antiguos no sustituyen este estado consolidado.
 | 1 — Shell iOS | Implementado |
 | 2 — Telnyx saliente | Validado por el usuario: audio bidireccional y cierre |
 | 3 — Realtime independiente | Conversación validada por el usuario, con las ampliaciones descritas aquí |
-| 4 — `ask_user` | Siguiente implementación; todavía no existe |
+| 4 — `ask_user` | Validado y completado por el usuario el 2026-09-13 |
 | 5 — Puente de audio | Pendiente, viabilidad experimental no demostrada |
-| 6 — Flujo completo durante llamada | Pendiente del puente y de `ask_user` |
+| 6 — Flujo completo durante llamada | Pendiente del puente y su validación integral |
 
-Hay **dos pruebas separadas**: «Ejecutar llamada» usa Telnyx con micrófono humano;
-«Probar voz de OpenAI» abre Realtime sin marcar ningún teléfono. El agente aún no
+Hay **dos pruebas separadas**: «Llamada telefónica · Hablas tú» usa Telnyx con micrófono humano;
+«Ensayar con Ember» abre Realtime sin marcar ningún teléfono. El agente aún no
 conversa con el receptor de una llamada Telnyx.
 
 El usuario validó voz, selección de idioma, identidad y una conversación que
 respeta el objetivo sin terminar por una pregunta pertinente desconocida. Reportó
 mejora del audio tras ajustar la detección. El autoscroll se añadió después de su
-última validación: compilado, comprobación visual en iPhone pendiente. No se da
+última validación. La [revisión visual local](VisualReview.md) incorpora opciones
+con envío explícito, editores separados y seguimiento agrupado de la transcripción.
+La confirmación del bloqueo táctil con voz real en iPhone sigue pendiente. No se da
 por ejecutada toda combinación de fallos, Bluetooth, red y cierre por ese reporte.
 
-Última suite ejecutada: **29 pruebas aprobadas**. Compilación para iPhone sin firma
-correcta, también tras el autoscroll. Las pruebas automáticas verifican código y
-servicios falsos; no demuestran por sí solas el comportamiento del modelo.
+Estado actual: **54 pruebas aprobadas, 0 fallos**, compilaciones Debug para simulador
+y Release para iPhone sin firma correctas. Ver [revisión integral](AppExperienceReview.md). Incluye las 29 regresiones previas. Las pruebas automáticas verifican código
+y transporte/servicios falsos; no demuestran por sí solas el comportamiento del modelo.
 
 ## Configuración del producto
 
@@ -36,7 +41,7 @@ servicios falsos; no demuestran por sí solas el comportamiento del modelo.
 
 | Dato | Dónde se cambia | Uso y persistencia |
 | --- | --- | --- |
-| Idioma de la app | Configuración | Español/inglés, persistente; interfaz, errores propios y futuras preguntas de `ask_user` |
+| Idioma de la app | Configuración | Español/inglés, persistente; interfaz, errores propios y preguntas de `ask_user` |
 | Idioma del agente | Formulario y pantalla de prueba de voz | Español/japonés/inglés u otro idioma escrito; se mantiene en la definición de llamada en memoria |
 | Idiomas del usuario | Configuración → Tu identidad | Hecho del perfil, persistente; no cambia ninguno de los dos selectores anteriores |
 
@@ -102,17 +107,20 @@ Las preguntas de recepción sobre qué diente duele, síntomas o medicamentos so
 **pertinentes**. Si el dato está disponible y autorizado, responde. Si falta,
 lo reconoce con naturalidad, sin frases sobre sus políticas o «lo que puede gestionar».
 
-Hoy, sin `ask_user`, pregunta si el dato es necesario para reservar o puede
-aportarse después. Si es obligatorio, propone dejar la solicitud pendiente y
-espera respuesta. No inventa el dato, no promete haber consultado al usuario y no
-cuelga por no saberlo. Este comportamiento provisional deberá adaptarse al
-`ask_user` real en el siguiente milestone.
+Con `ask_user`, pide un momento en el idioma del agente y pregunta al usuario en
+el idioma de la app. Espera una respuesta real desde el modal antes de usarla.
+Si el usuario no sabe, negocia con recepción dejar el dato o la solicitud pendiente,
+sin inventarlo ni cerrar unilateralmente. No añade la respuesta al perfil.
 
 ### Confirmación de cita
 
 1. Comprobar servicio, fecha/hora inequívocas, ubicación cuando corresponda,
    disponibilidad y restricciones; incluir llegada anticipada/duración si se conocen.
 2. Aceptar verbalmente el horario compatible, sin pedir aprobación redundante.
+   Si la clínica ofrece una alternativa fuera de disponibilidad, aclarar fecha/hora
+   y consultar con `ask_user`. Una aceptación explícita autoriza esa alternativa
+   durante la sesión; un rechazo lleva a buscar otras opciones. Una consulta anterior
+   sobre medicamentos no impide abrir otra para este nuevo permiso.
 3. Preguntar por instrucciones o requisitos para el usuario y esperar la respuesta;
    no repetir lo que ya haya sido explicado completamente.
 4. Comprobar compatibilidad. No prometer documentos, preparación, costes o servicios
@@ -136,18 +144,25 @@ Ya existe una herramienta real, `end_session`, con un único argumento obligator
 | --- | --- |
 | `objective_completed` | Cita confirmada, instrucciones resueltas, sin preguntas pertinentes pendientes |
 | `recipient_requested_end` | La recepción pide terminar o se despide explícitamente |
+| `user_requested_end` | El usuario pide terminar mediante una instrucción escrita en la app |
 | `pending_closure_agreed` | Ambas partes acuerdan terminar dejando la solicitud pendiente |
 
 La falta de un dato, una pausa o una pregunta ajena no bastan para cerrar.
+El usuario puede enviar [instrucciones durante la sesión](LiveUserInstructions.md),
+incluso para interrumpir una despedida antes de que se libere la conexión.
 Argumentos inválidos reciben un resultado de rechazo y la conversación continúa.
 La app valida el motivo declarado; su correspondencia con la conversación sigue
 siendo una decisión del modelo, no una comprobación semántica determinista.
 
-Secuencia: resumen → `end_session` → resultado de herramienta → respuesta final
-solo de agradecimiento/despedida → generación completada + audio del servidor
+Secuencia vigente (2026-09-13): `end_session` → resultado de herramienta → respuesta
+final con resultado confirmado o pendiente, agradecimiento y despedida → generación
+completada + audio del servidor
 vaciado para ese `response_id` → margen de 750 ms → evento `endedByAgent` → liberar
 Realtime. Durante la despedida se desactivan micrófono y VAD. No se toma el final
 del texto ni el vaciado de una respuesta anterior como señal para cortar.
+
+La respuesta final utiliza el motivo validado y solo hechos confirmados por recepción;
+si el resultado ya se explicó, evita repetirlo. Ver [revisión de experiencia](AppExperienceReview.md).
 
 Hay timeout de despedida y cierre manual, y se liberan recursos al salir/pasar a
 segundo plano. El cierre no demuestra que la reserva esté confirmada. En el
@@ -174,17 +189,18 @@ ahora ni acoplar las dos pruebas antes de construir el puente.
 | Timeout de despedida | `30 s` |
 | Margen tras vaciado de audio | `750 ms`; requiere comprobación auditiva según ruta/red |
 | Diagnóstico WebRTC | Contadores acumulados cada `5 s`, sin contenido personal |
-| Transcripción | Solo agente, original, en memoria, hasta 100 entradas y autoscroll |
+| Transcripción | Agente e interlocutor, original, en memoria, hasta 100 entradas y autoscroll |
 
 La transcripción puede incluir palabras interrumpidas; no es un registro exacto
-de lo escuchado. No hay traducción integral ni transcripción del interlocutor.
+de lo escuchado. La entrada usa `gpt-4o-mini-transcribe`, con idioma detectado
+automáticamente y texto asíncrono. No hay traducción integral.
 La clave API está en `Config.local.xcconfig`, ignorado por Git y embebido en esta
 instalación personal. No hay helper, backend, historial persistente ni cambios de
 infraestructura de producción.
 
-## Siguiente milestone: `ask_user` independiente de Telnyx
+## Milestone 4 implementado: `ask_user` independiente de Telnyx
 
-Implementar el flujo original conservando todo lo anterior:
+Contrato implementado y milestone aceptado por el usuario el 2026-09-13:
 
 1. Distinguir un dato conocido del perfil/contexto de uno desconocido o que requiere
    autorización. No volver a preguntar un dato que ya se conoce y se puede usar.
@@ -200,8 +216,8 @@ Implementar el flujo original conservando todo lo anterior:
    El cierre manual y una petición explícita de terminar deben seguir funcionando.
    Un resultado tardío no debe reabrir una sesión terminada.
 
-Actualizar el prompt que hoy dice «ask_user no está disponible», y añadir la nueva
-herramienta junto a `end_session`, sin eliminar su contrato de cierre. La respuesta
+El prompt utiliza ahora `ask_user` y la herramienta se registra junto a
+`end_session`, conservando su contrato de cierre. La respuesta
 pertenece a la solicitud de esa sesión: no diseñar persistencia clínica ni ampliar
 el perfil automáticamente como parte de este milestone.
 
@@ -221,7 +237,7 @@ el perfil automáticamente como parte de este milestone.
   corrompe otra sesión. Preservar el cierre después de la despedida completa.
 - Perfil, selección independiente de idiomas, controles visibles y autoscroll se conservan.
 
-Construir y probar este milestone antes de pasar al puente de audio.
+Validar manualmente este milestone antes de pasar al puente de audio.
 
 ## Archivos para comenzar
 

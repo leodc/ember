@@ -1,118 +1,85 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Sex" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sexo" } }
-      }
-    },
-    "Agent saying goodbye…" : {
-      "extractionState" : "manual",
+    "A call is already in progress." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El agente se está despidiendo…"
+            "value" : "Ya hay una llamada en curso."
           }
         }
       }
     },
-    "The agent ended the session" : {
-      "extractionState" : "manual",
+    "A little help with the conversation." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El agente finalizó la sesión"
+            "value" : "Una ayuda para dar el primer paso."
           }
         }
       }
     },
-    "The session closed because the final goodbye could not finish. The booking status has not changed." : {
+    "A new instruction replaces this question. The agent will ask again if information is still missing." : {
       "extractionState" : "manual",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La sesión se cerró porque no pudo completarse la despedida. El estado de la reserva no ha cambiado."
+            "value" : "Una instrucción nueva sustituye esta consulta. El agente volverá a preguntar si todavía falta información."
           }
         }
       }
     },
-    "Given name" : {
-      "extractionState" : "manual",
+    "A real call will be placed. Calling charges may apply." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nombre"
+            "value" : "Se realizará una llamada real. Puede tener un coste."
           }
         }
       }
     },
-    "Family name" : {
-      "extractionState" : "manual",
+    "A real Telnyx call will be placed. Carrier charges may apply." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apellidos"
+            "value" : "Se realizará una llamada real mediante Telnyx. Pueden aplicarse cargos."
           }
         }
       }
     },
-    "Preferred name" : {
-      "extractionState" : "manual",
+    "Add a phone number, appointment purpose, and language to continue." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nombre preferido"
+            "value" : "Añade un número de teléfono, el motivo de la cita y el idioma para continuar."
           }
         }
       }
     },
-    "Age in years" : {
-      "extractionState" : "manual",
+    "Add a valid phone number" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edad en años"
+            "value" : "Añadir un teléfono válido"
           }
         }
       }
     },
-    "Languages spoken" : {
-      "extractionState" : "manual",
+    "Add an appointment purpose and agent language to continue." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Idiomas que hablas"
-          }
-        }
-      }
-    },
-    "Occupation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ocupación"
-          }
-        }
-      }
-    },
-    "Nationality" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nacionalidad"
+            "value" : "Añade el motivo de la cita y el idioma del agente para continuar."
           }
         }
       }
@@ -128,88 +95,35 @@
         }
       }
     },
-    "Your identity" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu identidad"
-          }
-        }
-      }
-    },
-    "Saved on this iPhone and sent to OpenAI when you start a voice test. The agent uses these details only when relevant to your objective. Blank fields remain unknown. Age is updated manually." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se guarda en este iPhone y se envía a OpenAI al iniciar una prueba de voz. El agente utiliza estos datos solo cuando son pertinentes al objetivo. Los campos vacíos se consideran desconocidos. La edad se actualiza manualmente."
-          }
-        }
-      }
-    },
-    "Japanese" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Japonés"
-          }
-        }
-      }
-    },
-    "Other language" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otro idioma"
-          }
-        }
-      }
-    },
-    ": %@" : {
-      "comment" : "A failed call status.",
-      "isCommentAutoGenerated" : true
-    },
-    ". " : {
-      "comment" : "A period.",
-      "isCommentAutoGenerated" : true
-    },
-    "+81 …" : {
-      "comment" : "A placeholder for a phone number.",
-      "isCommentAutoGenerated" : true
-    },
-    "A real Telnyx call will be placed. Carrier charges may apply." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se realizará una llamada real mediante Telnyx. Pueden aplicarse cargos."
-          }
-        }
-      }
-    },
-    "Add a phone number, appointment purpose, and language to continue." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Añade un número de teléfono, el motivo de la cita y el idioma para continuar."
-          }
-        }
-      }
-    },
     "Adjust an existing booking." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modifica una reserva existente."
+          }
+        }
+      }
+    },
+    "Age in years" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edad en años"
+          }
+        }
+      }
+    },
+    "Agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agente"
           }
         }
       }
@@ -225,6 +139,7 @@
       }
     },
     "AGENT LANGUAGE" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -244,12 +159,45 @@
         }
       }
     },
+    "Agent saying goodbye…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El agente se está despidiendo…"
+          }
+        }
+      }
+    },
     "Agent speaking" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "El agente está hablando"
+          }
+        }
+      }
+    },
+    "Agent thinking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El agente está pensando"
+          }
+        }
+      }
+    },
+    "Agent transcript" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcripción del agente"
           }
         }
       }
@@ -265,6 +213,7 @@
       }
     },
     "APPOINTMENT FOR" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -275,6 +224,7 @@
       }
     },
     "Ask a question" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -290,6 +240,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pregúntame antes de aceptar una hora"
+          }
+        }
+      }
+    },
+    "Audio and appointment details are sent to OpenAI. API usage is billed separately." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El audio y los datos de la cita se envían a OpenAI. El uso de la API se cobra por separado."
+          }
+        }
+      }
+    },
+    "Audio was interrupted or its route changed. Start a new voice test." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The audio was interrupted or its output changed. Start a new rehearsal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El audio se interrumpió o cambió su salida. Inicia otro ensayo."
           }
         }
       }
@@ -314,6 +292,16 @@
         }
       }
     },
+    "Back to details" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a los datos"
+          }
+        }
+      }
+    },
     "Back to home" : {
       "localizations" : {
         "es" : {
@@ -324,7 +312,19 @@
         }
       }
     },
+    "Back to question" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a la pregunta"
+          }
+        }
+      }
+    },
     "Back to setup" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -334,12 +334,54 @@
         }
       }
     },
+    "Booking name" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre para la reserva"
+          }
+        }
+      }
+    },
+    "Call a real number and speak yourself. The AI voice is not connected to phone calls yet." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Llama a un número real y habla tú. La voz de la IA aún no participa en las llamadas."
+          }
+        }
+      }
+    },
+    "Call details" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detalles de la llamada"
+          }
+        }
+      }
+    },
     "CALL FINISHED" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "LLAMADA FINALIZADA"
+          }
+        }
+      }
+    },
+    "Call this number" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Llamar a este número"
           }
         }
       }
@@ -355,6 +397,7 @@
       }
     },
     "Change a reservation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -365,6 +408,7 @@
       }
     },
     "Check on a request or delivery." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -374,7 +418,39 @@
         }
       }
     },
+    "Check the details, then choose how to try them." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisa los datos y elige cómo probarlos."
+          }
+        }
+      }
+    },
+    "Choose a date and time" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir fecha y horario"
+          }
+        }
+      }
+    },
+    "Choose an answer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una respuesta"
+          }
+        }
+      }
+    },
     "Choose date and time" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -395,11 +471,33 @@
       }
     },
     "Coming soon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Próximamente"
+          }
+        }
+      }
+    },
+    "Configure %@ in Config.local.xcconfig." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura %@ en Config.local.xcconfig."
+          }
+        }
+      }
+    },
+    "Configure OPENAI_API_KEY in Config.local.xcconfig and rebuild the app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura OPENAI_API_KEY en Config.local.xcconfig y vuelve a compilar la app."
           }
         }
       }
@@ -424,6 +522,58 @@
         }
       }
     },
+    "Connecting to OpenAI…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectando con OpenAI…"
+          }
+        }
+      }
+    },
+    "Continue preparing" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar preparación"
+          }
+        }
+      }
+    },
+    "Conversation transcript" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcripción de la conversación"
+          }
+        }
+      }
+    },
+    "Couldn’t connect" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo conectar"
+          }
+        }
+      }
+    },
+    "Current availability" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponibilidad actual"
+          }
+        }
+      }
+    },
     "Date" : {
       "localizations" : {
         "es" : {
@@ -435,6 +585,7 @@
       }
     },
     "Does everything look right?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -450,6 +601,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Listo"
+          }
+        }
+      }
+    },
+    "e.g. +81 70 1234 5678" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ej. +81 70 1234 5678"
           }
         }
       }
@@ -484,6 +645,16 @@
         }
       }
     },
+    "e.g. Wednesday morning, or Friday after 14:00" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ej. Miércoles por la mañana o viernes después de las 14:00"
+          }
+        }
+      }
+    },
     "Edit" : {
       "localizations" : {
         "es" : {
@@ -497,6 +668,16 @@
     "Ember" : {
       "comment" : "The name of the app.",
       "isCommentAutoGenerated" : true
+    },
+    "Ember will ask when a name is needed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ember te preguntará si necesita un nombre."
+          }
+        }
+      }
     },
     "Ember will use this language for its screens and for questions it asks you. The phone conversation language is configured separately for each call." : {
       "localizations" : {
@@ -518,6 +699,33 @@
         }
       }
     },
+    "End rehearsal" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminar ensayo"
+          }
+        }
+      }
+    },
+    "End voice test" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End rehearsal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finalizar ensayo"
+          }
+        }
+      }
+    },
     "Ended" : {
       "localizations" : {
         "es" : {
@@ -534,6 +742,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finalizando"
+          }
+        }
+      }
+    },
+    "Ending the call does not confirm an appointment. Check the outcome with the recipient." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El fin de la llamada no confirma una cita. Comprueba lo acordado con la otra persona."
           }
         }
       }
@@ -559,6 +777,7 @@
       }
     },
     "Execute call" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -569,6 +788,7 @@
       }
     },
     "Failed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -578,7 +798,19 @@
         }
       }
     },
+    "Family name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apellidos"
+          }
+        }
+      }
+    },
     "Find a time that works for you." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -588,12 +820,34 @@
         }
       }
     },
+    "Follow my availability and ask about anything unknown." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Respetar mi disponibilidad y consultar lo que falte."
+          }
+        }
+      }
+    },
     "Follow up" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dar seguimiento"
+          }
+        }
+      }
+    },
+    "For example: ask about the price" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Por ejemplo: pregunta por el precio"
           }
         }
       }
@@ -609,6 +863,7 @@
       }
     },
     "Get information from a business." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -618,7 +873,63 @@
         }
       }
     },
+    "Give a new instruction" : {
+      "comment" : "A button that switches between sending an answer and sending an instruction to the agent.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dar una nueva instrucción"
+          }
+        }
+      }
+    },
+    "Give an instruction…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dale una instrucción…"
+          }
+        }
+      }
+    },
+    "Given name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre"
+          }
+        }
+      }
+    },
+    "Guide the conversation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guía la conversación"
+          }
+        }
+      }
+    },
+    "How Ember introduces you" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo te presenta Ember"
+          }
+        }
+      }
+    },
     "I’ll help you\nmake the call." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -639,6 +950,7 @@
       }
     },
     "If I don’t know something, I’ll ask you here." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -648,7 +960,106 @@
         }
       }
     },
+    "Instruction for the agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instrucción para el agente"
+          }
+        }
+      }
+    },
+    "Instruction for the agent…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instrucción para el agente…"
+          }
+        }
+      }
+    },
+    "Interrupt and send" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interrumpir y enviar"
+          }
+        }
+      }
+    },
+    "Interrupts the agent immediately" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interrumpe al agente de inmediato"
+          }
+        }
+      }
+    },
+    "Japanese" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Japonés"
+          }
+        }
+      }
+    },
+    "Keep Ember in the foreground. Say hello to begin; you can interrupt the agent while it speaks." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén Ember en primer plano. Saluda para comenzar; puedes interrumpir al agente mientras habla."
+          }
+        }
+      }
+    },
+    "Languages spoken" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idiomas que hablas"
+          }
+        }
+      }
+    },
+    "Latest messages" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mensajes recientes"
+          }
+        }
+      }
+    },
+    "Leave blank and Ember will ask before accepting a time." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si lo dejas vacío, Ember te consultará antes de aceptar un horario."
+          }
+        }
+      }
+    },
     "Let’s find a time\nthat works for you." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -658,7 +1069,18 @@
         }
       }
     },
+    "Let’s prepare your appointment." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparemos tu cita."
+          }
+        }
+      }
+    },
     "LIVE CALL" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -668,12 +1090,65 @@
         }
       }
     },
+    "Make a phone call" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hacer una llamada"
+          }
+        }
+      }
+    },
+    "Microphone access is required for this test call. Enable it in Settings and try again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta llamada de prueba necesita acceso al micrófono. Actívalo en Ajustes e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Microphone access is required. Enable it in Settings and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se necesita acceso al micrófono. Actívalo en Ajustes e inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "Milestone 2 test" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prueba del Milestone 2"
+          }
+        }
+      }
+    },
+    "Milestone 3 · Voice rehearsal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Milestone 3 · Ensayo de voz"
+          }
+        }
+      }
+    },
+    "More details" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más datos"
           }
         }
       }
@@ -688,7 +1163,30 @@
         }
       }
     },
+    "Nationality" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nacionalidad"
+          }
+        }
+      }
+    },
+    "No speech recognized." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se reconoció voz."
+          }
+        }
+      }
+    },
     "Not specified" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -698,7 +1196,51 @@
         }
       }
     },
+    "Occupation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocupación"
+          }
+        }
+      }
+    },
+    "Once connected, you speak directly to the recipient. Keep Ember open. The AI agent does not join this call." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al conectar, hablarás directamente con la otra persona. Mantén Ember abierto. El agente de IA no participa en esta llamada."
+          }
+        }
+      }
+    },
+    "OpenAI could not process the session. Check your model configuration and API quota, then try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI no pudo procesar la sesión. Revisa la configuración del modelo y tu cuota de API e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "OpenAI could not start the session (HTTP %lld). Check your API key, model access and API billing." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenAI no pudo iniciar la sesión (HTTP %lld). Revisa tu clave API, el acceso al modelo y la facturación de la API."
+          }
+        }
+      }
+    },
     "Optional. I’ll ask before agreeing if this is blank." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -708,12 +1250,91 @@
         }
       }
     },
+    "Original question" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Original question"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pregunta original"
+          }
+        }
+      }
+    },
+    "Other language" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otro idioma"
+          }
+        }
+      }
+    },
+    "Other person" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interlocutor"
+          }
+        }
+      }
+    },
+    "Phone call · You speak" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Llamada telefónica · Hablas tú"
+          }
+        }
+      }
+    },
+    "Phone call finished" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Llamada finalizada"
+          }
+        }
+      }
+    },
     "Phone number" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Número de teléfono"
+          }
+        }
+      }
+    },
+    "Phone number · Optional for rehearsal" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teléfono · Opcional para ensayar"
+          }
+        }
+      }
+    },
+    "Play the receptionist. Ember speaks, asks for your input, and follows your written instructions." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz de recepcionista. Ember conversa, te consulta y sigue tus instrucciones escritas."
           }
         }
       }
@@ -729,11 +1350,53 @@
       }
     },
     "PREFERENCES & PERMISSIONS" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "PREFERENCIAS Y PERMISOS"
+          }
+        }
+      }
+    },
+    "Preferred name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre preferido"
+          }
+        }
+      }
+    },
+    "Prepare an appointment" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparar una cita"
+          }
+        }
+      }
+    },
+    "Prepare an appointment, try it with Ember, and stay in control of every decision." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prepara una cita, ensaya con Ember y mantén el control de cada decisión."
+          }
+        }
+      }
+    },
+    "Prepare appointment" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparar cita"
           }
         }
       }
@@ -748,6 +1411,32 @@
         }
       }
     },
+    "Profile and settings" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perfil y ajustes"
+          }
+        }
+      }
+    },
+    "Question for you" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Question for you"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pregunta para ti"
+          }
+        }
+      }
+    },
     "Ready" : {
       "localizations" : {
         "es" : {
@@ -758,7 +1447,104 @@
         }
       }
     },
+    "Ready for the conversation?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Todo listo para conversar?"
+          }
+        }
+      }
+    },
+    "Ready to test" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to rehearse"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo para ensayar"
+          }
+        }
+      }
+    },
+    "Realtime took too long to connect. Check your network and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Realtime tardó demasiado en conectarse. Revisa tu conexión a internet e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Realtime voice test" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice rehearsal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensayo de voz"
+          }
+        }
+      }
+    },
+    "Rehearsal interrupted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensayo interrumpido"
+          }
+        }
+      }
+    },
+    "Rehearse the conversation" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensaya la conversación"
+          }
+        }
+      }
+    },
+    "Rehearse with AI" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensayar con IA"
+          }
+        }
+      }
+    },
+    "Rehearse with Ember" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensayar con Ember"
+          }
+        }
+      }
+    },
     "Review appointment" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -768,7 +1554,120 @@
         }
       }
     },
+    "Review details" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisar datos"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar"
+          }
+        }
+      }
+    },
+    "Saved on this iPhone and sent to OpenAI when you start a voice test. The agent uses these details only when relevant to your objective. Blank fields remain unknown. Age is updated manually." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved on this iPhone and sent to OpenAI when you start a rehearsal. Ember uses these details only when relevant to your goal. Blank fields remain unknown. Update your age when needed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se guarda en este iPhone y se envía a OpenAI al iniciar un ensayo. Ember utiliza estos datos solo cuando son pertinentes al objetivo. Los campos vacíos se consideran desconocidos. Actualiza tu edad cuando sea necesario."
+          }
+        }
+      }
+    },
+    "Say hello as the receptionist to begin." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saluda como recepcionista para empezar."
+          }
+        }
+      }
+    },
+    "Send answer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send answer"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar respuesta"
+          }
+        }
+      }
+    },
+    "Sending answer…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending answer…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando respuesta…"
+          }
+        }
+      }
+    },
+    "Sending instruction…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando instrucción…"
+          }
+        }
+      }
+    },
+    "Sending…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando…"
+          }
+        }
+      }
+    },
+    "Set the goal, your availability, and what Ember can agree to." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Define el objetivo, tu disponibilidad y qué puede aceptar Ember."
+          }
+        }
+      }
+    },
     "Set up an appointment" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -779,6 +1678,7 @@
       }
     },
     "Set what I can do and what needs your approval." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -789,6 +1689,7 @@
       }
     },
     "Settings" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -804,6 +1705,17 @@
         }
       }
     },
+    "Sex" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sexo"
+          }
+        }
+      }
+    },
     "Spanish" : {
       "localizations" : {
         "es" : {
@@ -814,7 +1726,66 @@
         }
       }
     },
+    "Speak as the receptionist. The agent uses your appointment details and selected agent language. No phone number is dialed." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Habla como la recepcionista. El agente utiliza los datos de tu cita y el idioma elegido para el agente. No se marca ningún número."
+          }
+        }
+      }
+    },
+    "Start a new rehearsal" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar otro ensayo"
+          }
+        }
+      }
+    },
+    "Start rehearsal" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar ensayo"
+          }
+        }
+      }
+    },
+    "Start voice test" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start rehearsal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar ensayo"
+          }
+        }
+      }
+    },
+    "Start with what you need. You can rehearse with Ember before making a real phone call." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuéntale a Ember lo que necesitas. Puedes ensayar antes de hacer una llamada real."
+          }
+        }
+      }
+    },
     "Tell me what you need. I’ll follow your instructions and check with you when I need an answer." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -825,6 +1796,7 @@
       }
     },
     "Tell me what you want to achieve." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -835,11 +1807,115 @@
       }
     },
     "Tell me who to call and when you’re free. I’ll follow your preferences and ask if I need anything else." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dime a quién llamar y cuándo estás disponible. Seguiré tus preferencias y preguntaré si necesito algo más."
+          }
+        }
+      }
+    },
+    "Tell the agent what to do next. It will interrupt its current response." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indica al agente qué hacer a continuación. Interrumpirá su respuesta actual."
+          }
+        }
+      }
+    },
+    "Test OpenAI voice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probar voz de OpenAI"
+          }
+        }
+      }
+    },
+    "Test the agent with these details before connecting it to a phone call." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba al agente con estos datos antes de conectarlo a una llamada telefónica."
+          }
+        }
+      }
+    },
+    "Text may include speech you interrupted." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El texto puede incluir frases que interrumpiste."
+          }
+        }
+      }
+    },
+    "The agent ended the session" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El agente finalizó la sesión"
+          }
+        }
+      }
+    },
+    "The agent is waiting. Your answer will be used in this conversation." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The agent is waiting. Your answer will be used in this conversation."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El agente está esperando. Tu respuesta se usará en esta conversación."
+          }
+        }
+      }
+    },
+    "The call was dropped: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La llamada se interrumpió: %@"
+          }
+        }
+      }
+    },
+    "The connection to Telnyx was lost." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se perdió la conexión con Telnyx."
+          }
+        }
+      }
+    },
+    "The conversation will appear here" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La conversación aparecerá aquí"
           }
         }
       }
@@ -854,12 +1930,82 @@
         }
       }
     },
+    "The instruction could not be sent in time. Start a new voice test." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The instruction could not be sent in time. Start a new rehearsal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo enviar la instrucción a tiempo. Inicia otro ensayo."
+          }
+        }
+      }
+    },
+    "The iPhone audio session could not be activated." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo activar el audio del iPhone."
+          }
+        }
+      }
+    },
+    "The Realtime connection was lost. Check your network and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se perdió la conexión con Realtime. Revisa tu conexión a internet e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The session closed because the final goodbye could not finish. The booking status has not changed." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sesión se cerró porque no pudo completarse la despedida. El estado de la reserva no ha cambiado."
+          }
+        }
+      }
+    },
     "This call uses your iPhone microphone and its current audio output. Keep Ember open during the test." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esta llamada usa el micrófono y la salida de audio actual del iPhone. Mantén Ember abierta durante la prueba."
+          }
+        }
+      }
+    },
+    "This calls a real number using your microphone. Ember’s AI voice does not join this call yet." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se llama a un número real con tu micrófono. La voz de Ember aún no participa en esta llamada."
+          }
+        }
+      }
+    },
+    "This was a rehearsal. No appointment was booked by the app." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto fue un ensayo. La app no ha reservado ninguna cita."
           }
         }
       }
@@ -870,6 +2016,49 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Franja horaria"
+          }
+        }
+      }
+    },
+    "Transcribing…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribiendo…"
+          }
+        }
+      }
+    },
+    "Transcription unavailable for this turn." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo transcribir este turno."
+          }
+        }
+      }
+    },
+    "Transcripts may be delayed or inaccurate and may include interrupted speech." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transcripción puede tardar, contener errores o incluir palabras interrumpidas."
+          }
+        }
+      }
+    },
+    "Two ways to try Ember" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dos formas de probar Ember"
           }
         }
       }
@@ -904,12 +2093,71 @@
         }
       }
     },
+    "Use the name you want the recipient to hear. All profile details are optional." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el nombre con el que quieres presentarte. Todos los datos del perfil son opcionales."
+          }
+        }
+      }
+    },
     "Use this time" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Usar este horario"
+          }
+        }
+      }
+    },
+    "Using this time replaces the current availability." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este horario sustituirá la disponibilidad actual."
+          }
+        }
+      }
+    },
+    "Voice conversation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversación de voz"
+          }
+        }
+      }
+    },
+    "Voice rehearsal" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensayo de voz"
+          }
+        }
+      }
+    },
+    "Voice test ended" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rehearsal ended"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensayo finalizado"
           }
         }
       }
@@ -920,6 +2168,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esperando al usuario"
+          }
+        }
+      }
+    },
+    "Waiting for your answer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for your answer"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando tu respuesta"
           }
         }
       }
@@ -935,6 +2199,7 @@
       }
     },
     "What would you like to do?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -964,12 +2229,122 @@
         }
       }
     },
+    "Write a different answer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribir otra respuesta"
+          }
+        }
+      }
+    },
+    "Write response…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write response…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribir respuesta…"
+          }
+        }
+      }
+    },
+    "Write…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe…"
+          }
+        }
+      }
+    },
+    "You are speaking directly to the recipient. Keep Ember open. The AI agent is not part of this call." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hablas directamente con la otra persona. Mantén Ember abierto. El agente de IA no participa en esta llamada."
+          }
+        }
+      }
+    },
+    "You can answer Ember’s questions or send a new instruction at any time." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puedes responder a Ember o darle una nueva instrucción en cualquier momento."
+          }
+        }
+      }
+    },
+    "You play the receptionist; Ember represents you. Say hello, ask a question, or offer a different time. No real call is made." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tú haces de recepcionista y Ember te representa. Saluda, haz una pregunta u ofrece otro horario. No se realiza una llamada real."
+          }
+        }
+      }
+    },
+    "You play the receptionist. No phone number is dialed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tú haces de recepcionista. No se marca ningún teléfono."
+          }
+        }
+      }
+    },
     "You’re in control" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tú tienes el control"
+          }
+        }
+      }
+    },
+    "You’re making this call" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tú realizas esta llamada"
+          }
+        }
+      }
+    },
+    "Your answer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu respuesta"
+          }
+        }
+      }
+    },
+    "Your answers and instructions stay in your hands." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tú decides qué responder y cómo continuar."
           }
         }
       }
@@ -985,6 +2360,7 @@
       }
     },
     "YOUR AVAILABILITY" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -995,6 +2371,7 @@
       }
     },
     "Your boundaries" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1015,6 +2392,7 @@
       }
     },
     "Your calling assistant" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1025,6 +2403,7 @@
       }
     },
     "Your goal" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1034,12 +2413,35 @@
         }
       }
     },
+    "Your identity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu identidad"
+          }
+        }
+      }
+    },
     "Your input" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tu intervención"
+          }
+        }
+      }
+    },
+    "Your instruction" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu instrucción"
           }
         }
       }
@@ -1054,304 +2456,23 @@
         }
       }
     },
-    "A call is already in progress." : {
+    "Your microphone is live" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ya hay una llamada en curso."
+            "value" : "Tu micrófono está activo"
           }
         }
       }
     },
-    "The connection to Telnyx was lost." : {
+    "Your next appointment" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se perdió la conexión con Telnyx."
-          }
-        }
-      }
-    },
-    "The call was dropped: %@" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La llamada se interrumpió: %@"
-          }
-        }
-      }
-    },
-    "The iPhone audio session could not be activated." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo activar el audio del iPhone."
-          }
-        }
-      }
-    },
-    "Microphone access is required for this test call. Enable it in Settings and try again." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta llamada de prueba necesita acceso al micrófono. Actívalo en Ajustes e inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Configure %@ in Config.local.xcconfig." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configura %@ en Config.local.xcconfig."
-          }
-        }
-      }
-    },
-    "Realtime voice test" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prueba de voz Realtime"
-          }
-        }
-      }
-    },
-    "Speak as the receptionist. The agent uses your appointment details and selected agent language. No phone number is dialed." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Habla como la recepcionista. El agente utiliza los datos de tu cita y el idioma elegido para el agente. No se marca ningún número."
-          }
-        }
-      }
-    },
-    "Keep Ember in the foreground. Say hello to begin; you can interrupt the agent while it speaks." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mantén Ember en primer plano. Saluda para comenzar; puedes interrumpir al agente mientras habla."
-          }
-        }
-      }
-    },
-    "Agent transcript" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transcripción del agente"
-          }
-        }
-      }
-    },
-    "Text may include speech you interrupted." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El texto puede incluir frases que interrumpiste."
-          }
-        }
-      }
-    },
-    "End voice test" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finalizar prueba de voz"
-          }
-        }
-      }
-    },
-    "Start voice test" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Iniciar prueba de voz"
-          }
-        }
-      }
-    },
-    "Audio and appointment details are sent to OpenAI. API usage is billed separately." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El audio y los datos de la cita se envían a OpenAI. El uso de la API se cobra por separado."
-          }
-        }
-      }
-    },
-    "Ready to test" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Listo para probar"
-          }
-        }
-      }
-    },
-    "Connecting to OpenAI…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conectando con OpenAI…"
-          }
-        }
-      }
-    },
-    "Agent thinking" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El agente está pensando"
-          }
-        }
-      }
-    },
-    "Voice test ended" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prueba de voz finalizada"
-          }
-        }
-      }
-    },
-    "Milestone 3 · Voice rehearsal" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Milestone 3 · Ensayo de voz"
-          }
-        }
-      }
-    },
-    "Test the agent with these details before connecting it to a phone call." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prueba al agente con estos datos antes de conectarlo a una llamada telefónica."
-          }
-        }
-      }
-    },
-    "Test OpenAI voice" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Probar voz de OpenAI"
-          }
-        }
-      }
-    },
-    "Configure OPENAI_API_KEY in Config.local.xcconfig and rebuild the app." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configura OPENAI_API_KEY en Config.local.xcconfig y vuelve a compilar la app."
-          }
-        }
-      }
-    },
-    "Microphone access is required. Enable it in Settings and try again." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se necesita acceso al micrófono. Actívalo en Ajustes e inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "The Realtime connection was lost. Check your network and try again." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se perdió la conexión con Realtime. Revisa tu conexión a internet e inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Realtime took too long to connect. Check your network and try again." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Realtime tardó demasiado en conectarse. Revisa tu conexión a internet e inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Audio was interrupted or its route changed. Start a new voice test." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El audio se interrumpió o cambió su salida. Inicia otra prueba de voz."
-          }
-        }
-      }
-    },
-    "OpenAI could not start the session (HTTP %lld). Check your API key, model access and API billing." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OpenAI no pudo iniciar la sesión (HTTP %lld). Revisa tu clave API, el acceso al modelo y la facturación de la API."
-          }
-        }
-      }
-    },
-    "OpenAI could not process the session. Check your model configuration and API quota, then try again." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OpenAI no pudo procesar la sesión. Revisa la configuración del modelo y tu cuota de API e inténtalo de nuevo."
+            "value" : "Tu próxima cita"
           }
         }
       }

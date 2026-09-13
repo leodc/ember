@@ -53,7 +53,7 @@ final class CallController {
     }
 
     func executeCall() {
-        guard definition.canReview, callState == .idle else { return }
+        guard definition.canPlaceCall, callState == .idle else { return }
         attemptID = UUID()
         callState = .preparing
         route = .active

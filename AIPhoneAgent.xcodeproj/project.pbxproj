@@ -25,6 +25,9 @@
 		100000000000000000000021 /* OpenAIRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021; };
 		100000000000000000000022 /* RealtimeTestController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022; };
 		100000000000000000000023 /* RealtimeTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023; };
+		100000000000000000000024 = {isa = PBXBuildFile; fileRef = 200000000000000000000024; };
+		100000000000000000000025 = {isa = PBXBuildFile; fileRef = 200000000000000000000025; };
+		100000000000000000000026 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +63,9 @@
 		200000000000000000000021 /* OpenAIRealtimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIRealtimeClient.swift; sourceTree = "<group>"; };
 		200000000000000000000022 /* RealtimeTestController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTestController.swift; sourceTree = "<group>"; };
 		200000000000000000000023 /* RealtimeTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeTestView.swift; sourceTree = "<group>"; };
+		200000000000000000000024 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskUserView.swift; sourceTree = "<group>"; };
+		200000000000000000000025 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualReviewGallery.swift; sourceTree = "<group>"; };
+		200000000000000000000026 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +143,8 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000023 /* RealtimeTestView.swift */,
+				200000000000000000000024 /* AskUserView.swift */,
+				200000000000000000000025 /* VisualReviewGallery.swift */,
 				200000000000000000000006 /* CallDefinitionView.swift */,
 				200000000000000000000007 /* CallReviewView.swift */,
 				200000000000000000000008 /* ActiveCallView.swift */,
@@ -183,6 +191,7 @@
 		70000000000000000000000B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000026 /* Assets.xcassets */,
 				200000000000000000000011 /* Localizable.xcstrings */,
 				200000000000000000000012 /* InfoPlist.xcstrings */,
 			);
@@ -277,6 +286,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				100000000000000000000026 /* Assets.xcassets in Resources */,
 				10000000000000000000000D /* Localizable.xcstrings in Resources */,
 				10000000000000000000000E /* InfoPlist.xcstrings in Resources */,
 			);
@@ -297,6 +307,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				100000000000000000000023 /* RealtimeTestView.swift in Sources */,
+				100000000000000000000024 /* AskUserView.swift in Sources */,
+				100000000000000000000025 /* VisualReviewGallery.swift in Sources */,
 				100000000000000000000022 /* RealtimeTestController.swift in Sources */,
 				100000000000000000000021 /* OpenAIRealtimeClient.swift in Sources */,
 				100000000000000000000020 /* RealtimeConfiguration.swift in Sources */,
@@ -366,6 +378,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_STYLE = Automatic;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8FKK9FB79H;
 				ENABLE_BITCODE = NO;
@@ -387,6 +400,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_STYLE = Automatic;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8FKK9FB79H;
 				ENABLE_BITCODE = NO;

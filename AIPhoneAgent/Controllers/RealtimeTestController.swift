@@ -6,19 +6,30 @@ import AVFoundation
 @Observable
 final class RealtimeTestController {
     enum State: Equatable {
-        case idle, connecting, listening, thinking, speaking, ending, ended, failed(String)
+        case idle, connecting, listening, thinking, speaking, waitingForUser, ending, ended, failed(String)
         var isActive: Bool {
             switch self {
-            case .connecting, .listening, .thinking, .speaking, .ending: true
+            case .connecting, .listening, .thinking, .speaking, .waitingForUser, .ending: true
             default: false
             }
         }
     }
-    struct Transcript: Identifiable {
+    struct Transcript: Identifiable, Equatable {
         let id: String
+        let speaker: TranscriptSpeaker
         var text: String
+        var isFinal = false
+        var unavailable = false
     }
     private(set) var state: State = .idle
+    private(set) var pendingQuestion: AskUserRequest?
+    private(set) var answerSending = false
+    var instructionDraft = ""
+    private(set) var instructionSending = false
+    private var instructionID: UUID?
+    var canSendInstruction: Bool {
+        state.isActive && state != .connecting && !instructionSending && !answerSending
+    }
     private(set) var endedByAgent = false
     private(set) var transcripts: [Transcript] = []
     private var attempt: UUID?
@@ -70,6 +81,24 @@ final class RealtimeTestController {
         }
     }
 
+    func sendInstruction() {
+        guard canSendInstruction, let service,
+              !instructionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let id = UUID()
+        instructionID = id
+        instructionSending = true
+        do { try service.submitInstruction(id: id, text: instructionDraft) }
+        catch { fail(.connection) }
+    }
+
+    func submitAnswer(requestID: UUID, answer: String) {
+        guard pendingQuestion?.id == requestID, !answerSending, !instructionSending,
+              !answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        answerSending = true
+        do { try service?.submitAnswer(requestID: requestID, answer: answer) }
+        catch { fail(.connection) }
+    }
+
     func stop() {
         release()
         state = .ended
@@ -81,6 +110,11 @@ final class RealtimeTestController {
     }
 
     private func release() {
+        instructionID = nil
+        instructionSending = false
+        instructionDraft = ""
+        pendingQuestion = nil
+        answerSending = false
         attempt = nil
         connectionTask?.cancel()
         connectionTask = nil
@@ -97,24 +131,57 @@ final class RealtimeTestController {
             timeoutTask?.cancel()
             timeoutTask = nil
             state = .listening
-        case .listening: if state != .ending { state = .listening }
-        case .thinking: if state != .ending { state = .thinking }
-        case .speaking: if state != .ending { state = .speaking }
-        case .ending: state = .ending
+        case .listening: if state != .ending && pendingQuestion == nil { state = .listening }
+        case .thinking: if state != .ending && pendingQuestion == nil { state = .thinking }
+        case .speaking: if state != .ending && pendingQuestion == nil { state = .speaking }
+        case .askUser(let request):
+            guard state != .ending, pendingQuestion == nil else { return }
+            pendingQuestion = request
+            answerSending = false
+            state = .waitingForUser
+        case .questionSuperseded:
+            pendingQuestion = nil
+            answerSending = false
+        case .instructionSubmitted(let id, let text):
+            guard instructionID == id else { return }
+            instructionID = nil
+            instructionSending = false
+            instructionDraft = ""
+            updateTranscript(id: id.uuidString, text: text, final: true, speaker: .userInstruction)
+            state = .thinking
+        case .answerSubmitted:
+            pendingQuestion = nil
+            answerSending = false
+            state = .thinking
+        case .ending:
+            pendingQuestion = nil
+            answerSending = false
+            state = .ending
         case .endedByAgent:
-            guard state == .ending else { return }
+            guard state == .ending, !instructionSending else { return }
             endedByAgent = true
             release()
             state = .ended
         case .failed(let error): fail(error)
-        case .transcript(let id, let text, let final):
-            if let index = transcripts.firstIndex(where: { $0.id == id }) {
-                if final { transcripts[index].text = text }
-                else { transcripts[index].text += text }
-            } else {
-                transcripts.append(Transcript(id: id, text: text))
-                if transcripts.count > 100 { transcripts.removeFirst() }
-            }
+        case .transcript(let id, let text, let final, let speaker):
+            updateTranscript(id: id, text: text, final: final, speaker: speaker)
+        case .transcriptUnavailable(let id):
+            updateTranscript(id: id, text: "", final: true, speaker: .recipient, unavailable: true)
+        }
+    }
+
+    private func updateTranscript(id: String, text: String, final: Bool,
+                                  speaker: TranscriptSpeaker, unavailable: Bool = false) {
+        if let index = transcripts.firstIndex(where: { $0.id == id }) {
+            guard !transcripts[index].isFinal else { return }
+            if final { transcripts[index].text = text }
+            else { transcripts[index].text += text }
+            transcripts[index].isFinal = final
+            transcripts[index].unavailable = unavailable
+        } else {
+            transcripts.append(Transcript(id: id, speaker: speaker, text: text,
+                                          isFinal: final, unavailable: unavailable))
+            if transcripts.count > 100 { transcripts.removeFirst() }
         }
     }
 }

@@ -1,82 +1,187 @@
 import SwiftUI
 
+@MainActor
 struct RealtimeTestView: View {
     let definition: CallDefinition
     @Environment(CallController.self) private var callController
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @State private var controller = RealtimeTestController()
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var controller: RealtimeTestController
+    @State private var followTranscript = true
+
+    init(definition: CallDefinition, controller: RealtimeTestController? = nil) {
+        self.definition = definition
+        _controller = State(initialValue: controller ?? RealtimeTestController())
+    }
+
+    private var hasConversation: Bool { controller.state.isActive || !controller.transcripts.isEmpty }
 
     var body: some View {
         @Bindable var callController = callController
         NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        Label("Realtime voice test", systemImage: "waveform")
-                            .font(.largeTitle.bold())
-                        Text("Speak as the receptionist. The agent uses your appointment details and selected agent language. No phone number is dialed.")
-                            .foregroundStyle(Ember.secondary)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(definition.objective).font(.headline)
-                            AgentLanguagePicker(language: $callController.definition.agentLanguage)
-                                .disabled(controller.state.isActive)
-                            if !definition.availability.isEmpty { Text(definition.availability) }
-                        }.padding().frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.white, in: RoundedRectangle(cornerRadius: 20))
-                        status.accessibilityAddTraits(.updatesFrequently)
-                        Text("Keep Ember in the foreground. Say hello to begin; you can interrupt the agent while it speaks.")
-                            .font(.subheadline).foregroundStyle(Ember.secondary)
-                        if !controller.transcripts.isEmpty {
-                            Text("Agent transcript").font(.headline)
-                            Text("Text may include speech you interrupted.").font(.caption).foregroundStyle(Ember.secondary)
-                            ForEach(controller.transcripts) { item in
-                                Text(item.text).textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 0) {
+                if hasConversation && !dynamicTypeSize.isAccessibilitySize {
+                    conversationHeader
+                    Divider().opacity(0.4)
+                }
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            if hasConversation && dynamicTypeSize.isAccessibilitySize {
+                                conversationHeader
                             }
+                            if !hasConversation {
+                                Text("Rehearse the conversation").font(.largeTitle.bold())
+                                Text("You play the receptionist; Ember represents you. Say hello, ask a question, or offer a different time. No real call is made.")
+                                    .foregroundStyle(Ember.secondary)
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text(definition.objective).font(.headline)
+                                    AgentLanguagePicker(language: $callController.definition.agentLanguage)
+                                    Text(definition.availability)
+                                }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 20))
+                                Label("You can answer Ember’s questions or send a new instruction at any time.", systemImage: "text.bubble")
+                                    .font(.subheadline).foregroundStyle(Ember.secondary)
+                                status
+                            } else {
+                                DisclosureGroup("Call details") {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(definition.objective)
+                                        Text(definition.availability)
+                                        Text(LocalizedStringKey(callController.definition.agentLanguage))
+                                        Text("Transcripts may be delayed or inaccurate and may include interrupted speech.")
+                                            .font(.caption).foregroundStyle(Ember.secondary)
+                                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
+                                }.font(.subheadline).foregroundStyle(Ember.secondary)
+                            }
+                            if controller.transcripts.isEmpty && controller.state.isActive {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "waveform").font(.largeTitle).foregroundStyle(Ember.orange)
+                                    Text("The conversation will appear here").font(.headline)
+                                    Text("Say hello as the receptionist to begin.").font(.subheadline).foregroundStyle(Ember.secondary)
+                                }.multilineTextAlignment(.center).frame(maxWidth: .infinity).padding(.vertical, 56)
+                            }
+                            ForEach(controller.transcripts) { item in
+                                TranscriptBubble(item: item)
+                            }
+                            if !controller.state.isActive && hasConversation {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    status.font(.headline)
+                                    if case .failed(let message) = controller.state {
+                                        Text(message).font(.subheadline).foregroundStyle(Ember.secondary)
+                                    }
+                                    Text("This was a rehearsal. No appointment was booked by the app.")
+                                        .font(.subheadline).foregroundStyle(Ember.secondary)
+                                }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
+                                    .background(Ember.peach.opacity(0.4), in: RoundedRectangle(cornerRadius: 20))
+                            }
+                            Color.clear.frame(height: 1).id("transcript-bottom")
+                        }.padding(20).frame(maxWidth: 640).frame(maxWidth: .infinity)
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { _ in
+                        if followTranscript, !controller.transcripts.isEmpty { followTranscript = false }
+                    })
+                    .task {
+                        // Token deltas must not start a new scroll/layout task each frame.
+                        // Keep one bounded follower and leave the hidden list still during ask_user.
+                        var lastFollowed: [RealtimeTestController.Transcript] = []
+                        var lastFollowedState = controller.state
+                        var settleLayout = false
+                        while !Task.isCancelled {
+                            do { try await Task.sleep(for: .milliseconds(200)) }
+                            catch { return }
+                            guard followTranscript, controller.pendingQuestion == nil,
+                                  !controller.transcripts.isEmpty else { continue }
+                            let changed = controller.transcripts != lastFollowed || controller.state != lastFollowedState
+                            guard changed || settleLayout else { continue }
+                            // A bounded second pass accommodates multiline text layout after insertion.
+                            settleLayout = changed
+                            lastFollowed = controller.transcripts
+                            lastFollowedState = controller.state
+                            proxy.scrollTo("transcript-bottom", anchor: .bottom)
                         }
-                        Color.clear.frame(height: 1).id("transcript-bottom")
-                    }.padding(24)
-                }
-                .task(id: controller.transcripts.last?.text) {
-                    guard !controller.transcripts.isEmpty else { return }
-                    // Let the growing text lay out before moving to its bottom anchor.
-                    await Task.yield()
-                    guard !Task.isCancelled else { return }
-                    proxy.scrollTo("transcript-bottom", anchor: .bottom)
-                }
-            }
-            .background(Ember.background)
-            .safeAreaInset(edge: .bottom) {
-                EmberFooter {
-                    if controller.state.isActive {
-                        Button("End voice test", role: .destructive) { controller.stop() }
-                            .buttonStyle(.borderedProminent).frame(minHeight: 44)
-                    } else {
-                        VStack(spacing: 8) {
-                            Text("Audio and appointment details are sent to OpenAI. API usage is billed separately.")
-                                .font(.caption).foregroundStyle(Ember.secondary)
-                            EmberPrimaryButton(title: "Start voice test", icon: "mic") {
-                                var context = definition
-                                context.userIdentity = settings.userIdentity
-                                context.agentLanguage = callController.definition.agentLanguage
-                                controller.start(definition: context, language: settings.language)
-                            }.disabled(callController.definition.agentLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if !followTranscript {
+                            Button {
+                                followTranscript = true
+                                withAnimation { proxy.scrollTo("transcript-bottom", anchor: .bottom) }
+                            } label: {
+                                Label("Latest messages", systemImage: "arrow.down")
+                                    .font(.subheadline.weight(.semibold)).padding(.horizontal, 16).padding(.vertical, 12)
+                            }
+                            .buttonStyle(.plain).foregroundStyle(.white)
+                            .background(Ember.ink, in: Capsule()).padding(16)
+                            .accessibilityIdentifier("transcript-latest")
                         }
                     }
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { controller.stop(); dismiss() }
+            .background(Ember.background).foregroundStyle(Ember.ink)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if controller.state.isActive {
+                    HStack(alignment: .top, spacing: 10) {
+                        InstructionComposer(controller: controller)
+                        Button(role: .destructive) { controller.stop() } label: {
+                            Image(systemName: "phone.down.fill").font(.body.weight(.semibold))
+                                .frame(width: 54, height: 54)
+                                .background(Color.red.opacity(0.08), in: Circle())
+                        }.buttonStyle(.plain).foregroundStyle(.red)
+                            .accessibilityLabel("End voice test").accessibilityIdentifier("live-end-session")
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .frame(maxWidth: 640).frame(maxWidth: .infinity).background(Ember.background)
+                    .overlay(alignment: .top) { Divider().opacity(0.4) }
+                } else {
+                    EmberFooter {
+                        VStack(spacing: 10) {
+                            SessionActionButton(title: hasConversation ? "Start a new rehearsal" : "Start rehearsal") {
+                                var context = definition
+                                context.userIdentity = settings.userIdentity
+                                context.agentLanguage = callController.definition.agentLanguage
+                                followTranscript = true
+                                controller.start(definition: context, language: settings.language)
+                            }.disabled(callController.definition.agentLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            Text("Audio and appointment details are sent to OpenAI. API usage is billed separately.")
+                                .font(.caption).foregroundStyle(Ember.secondary)
+                        }
+                    }
                 }
             }
+            .navigationTitle("Voice rehearsal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(controller.state.isActive ? "End rehearsal" : "Done") { controller.stop(); dismiss() }
+                }
+            }
+        }
+        .tint(Ember.ink).preferredColorScheme(.light)
+        .sheet(item: Binding(get: { controller.pendingQuestion }, set: { _ in })) { request in
+            AskUserView(request: request, sending: controller.answerSending,
+                        submit: { controller.submitAnswer(requestID: request.id, answer: $0) },
+                        endSession: { controller.stop() }, controller: controller)
+                .interactiveDismissDisabled()
+                .dynamicTypeSize(dynamicTypeSize)
         }
         .onDisappear { controller.stop() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background, controller.state.isActive { controller.stop() }
         }
+    }
+
+    private var conversationHeader: some View {
+        HStack(spacing: 12) {
+            EmberMark(size: 34).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(definition.contactName.isEmpty ? appLocalized("Voice conversation") : definition.contactName)
+                    .font(.headline)
+                status.font(.subheadline).foregroundStyle(Ember.secondary)
+            }
+            Spacer(minLength: 0)
+        }.padding(.horizontal, 20).padding(.vertical, 14)
     }
 
     @ViewBuilder private var status: some View {
@@ -86,6 +191,7 @@ struct RealtimeTestView: View {
         case .listening: Label("Agent listening", systemImage: "ear")
         case .thinking: Label("Agent thinking", systemImage: "ellipsis.bubble")
         case .speaking: Label("Agent speaking", systemImage: "waveform")
+        case .waitingForUser: Label("Waiting for your answer", systemImage: "person.crop.circle.badge.questionmark")
         case .ending: Label("Agent saying goodbye…", systemImage: "hand.wave")
         case .ended:
             if controller.endedByAgent {
@@ -93,7 +199,62 @@ struct RealtimeTestView: View {
             } else {
                 Label("Voice test ended", systemImage: "checkmark.circle")
             }
-        case .failed(let message): Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+        case .failed(let message):
+            if hasConversation {
+                Label("Rehearsal interrupted", systemImage: "exclamationmark.triangle").foregroundStyle(Ember.critical)
+            } else {
+                Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(Ember.critical)
+            }
+        }
+    }
+}
+
+struct TranscriptBubble: View {
+    let item: RealtimeTestController.Transcript
+    private var isInstruction: Bool { item.speaker == .userInstruction }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: icon).font(.caption.weight(.semibold))
+                .foregroundStyle(isInstruction ? .white.opacity(0.8) : Ember.secondary)
+            if item.unavailable {
+                Label("Transcription unavailable for this turn.", systemImage: "exclamationmark.bubble")
+                    .font(.subheadline).foregroundStyle(Ember.secondary)
+            } else if item.text.isEmpty {
+                Text(item.isFinal ? "No speech recognized." : "Transcribing…")
+                    .font(.subheadline).foregroundStyle(Ember.secondary)
+            } else {
+                Text(item.text).lineSpacing(4).textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).padding(16)
+        .foregroundStyle(isInstruction ? .white : Ember.ink)
+        .background(background, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Ember.ink.opacity(isInstruction ? 0 : 0.05)))
+        .padding(.leading, isInstruction ? 24 : 0).padding(.trailing, isInstruction ? 0 : 16)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var background: Color {
+        switch item.speaker {
+        case .agent: .white
+        case .recipient: Ember.peach.opacity(0.45)
+        case .userInstruction: Ember.ink
+        }
+    }
+    private var title: LocalizedStringKey {
+        switch item.speaker {
+        case .agent: "Agent"
+        case .recipient: "Other person"
+        case .userInstruction: "Your instruction"
+        }
+    }
+    private var icon: String {
+        switch item.speaker {
+        case .agent: "waveform"
+        case .recipient: "person"
+        case .userInstruction: "paperplane"
         }
     }
 }

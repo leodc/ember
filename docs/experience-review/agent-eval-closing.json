@@ -1,0 +1,438 @@
+{
+  "cases" : [
+    {
+      "case" : "unknown-medication",
+      "turns" : [
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Buenos días. Soy Ember, una asistente de inteligencia artificial que llama en nombre de Alex. Un momento, voy a consultar con Alex esa información.",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ57k7Hc2Y4kL7lLYoHQ",
+              "phase" : "commentary",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            },
+            {
+              "arguments" : "{\"question\":\"La clínica pregunta si tomas algún medicamento. ¿Qué medicamentos tomas, si alguno?\",\"originalQuestion\":\"Para reservar la limpieza, ¿Alex toma algún medicamento?\",\"suggestedAnswers\":[]}",
+              "call_id" : "call_yFjEuQvnGfVFwiGC",
+              "id" : "item_ENQ585c0VOh0J7QIuJoYh",
+              "name" : "ask_user",
+              "status" : "completed",
+              "type" : "function_call"
+            }
+          ],
+          "recipient" : "Buenos días. Para reservar la limpieza, ¿Alex toma algún medicamento?",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 0,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 0
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3458
+            },
+            "input_tokens" : 3458,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 54,
+              "text_tokens" : 146
+            },
+            "output_tokens" : 146,
+            "total_tokens" : 3604
+          }
+        }
+      ]
+    },
+    {
+      "case" : "cannot-wait",
+      "turns" : [
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Soy Ember, una asistente de IA que llama en nombre de Alex. Para esa información, necesito comprobarlo con Alex un momento.",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ59onPdsVpSzjwMj5mY",
+              "phase" : "commentary",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            },
+            {
+              "arguments" : "{\"question\":\"¿Alex toma algún medicamento? Si es así, por favor indícalo. Si no, puedes responder \\\"No\\\".\",\"suggestedAnswers\":[\"No\",\"Sí, toma este/estos medicamentos:\"] ,\"originalQuestion\":\"¿Alex toma algún medicamento?\"}",
+              "call_id" : "call_VYgdVjPMBc1ASVFZ",
+              "id" : "item_ENQ5Ar5nEdDHNhWswm1pD",
+              "name" : "ask_user",
+              "status" : "completed",
+              "type" : "function_call"
+            }
+          ],
+          "recipient" : "¿Alex toma algún medicamento?",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 0,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 0
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3449
+            },
+            "input_tokens" : 3449,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 27,
+              "text_tokens" : 129
+            },
+            "output_tokens" : 129,
+            "total_tokens" : 3578
+          }
+        },
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Sí, sigo aquí. Todavía estoy esperando la respuesta de Alex sobre los medicamentos.\n\nSi no puede esperar, ¿prefiere dejar la solicitud pendiente o prefiere que contactemos más tarde para continuar?",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ5BtXXN0r6iXwSzejp4",
+              "phase" : "final_answer",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            }
+          ],
+          "recipient" : "¿Sigue ahí? No puedo esperar mucho tiempo.",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 3456,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 3456
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3630
+            },
+            "input_tokens" : 3630,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 34,
+              "text_tokens" : 79
+            },
+            "output_tokens" : 79,
+            "total_tokens" : 3709
+          }
+        }
+      ]
+    },
+    {
+      "case" : "declines-ai",
+      "turns" : [
+        {
+          "output" : [
+            {
+              "arguments" : "{\"reason\":\"recipient_requested_end\"}",
+              "call_id" : "call_QcFJ5ddpCBEyhoxn",
+              "id" : "item_ENQ5Dc1r3uZTAxTAkeFXU",
+              "name" : "end_session",
+              "status" : "completed",
+              "type" : "function_call"
+            }
+          ],
+          "recipient" : "No atendemos a asistentes de IA. Necesito que llame la persona directamente. Termine la llamada, por favor.",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 0,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 0
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3468
+            },
+            "input_tokens" : 3468,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 49,
+              "text_tokens" : 69
+            },
+            "output_tokens" : 69,
+            "total_tokens" : 3537
+          }
+        },
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Entendido, gracias por decírmelo. Que tenga un buen día, adiós.",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ5E6PtHrYXTgfdcCyyx",
+              "phase" : "final_answer",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            }
+          ],
+          "phase" : "farewell",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 0,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 0
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 661
+            },
+            "input_tokens" : 661,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "text_tokens" : 23
+            },
+            "output_tokens" : 23,
+            "total_tokens" : 684
+          }
+        }
+      ]
+    },
+    {
+      "case" : "correction",
+      "turns" : [
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Soy Ember, asistente de IA, y llamo en nombre de Alex para reservar una limpieza dental. Ese horario le encaja.\n\n¿Podría confirmarme el coste de la limpieza?",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ5Fy1bCI3hkT3oUsgZn",
+              "phase" : "final_answer",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            }
+          ],
+          "recipient" : "Tenemos el miércoles 16 de septiembre a las diez.",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 0,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 0
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3454
+            },
+            "input_tokens" : 3454,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 231,
+              "text_tokens" : 273
+            },
+            "output_tokens" : 273,
+            "total_tokens" : 3727
+          }
+        },
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Gracias por la corrección. A las 11:00 le encaja a Alex, y llegar 15 minutos antes también entra en su disponibilidad.\n\n¿Podría decirme el coste de la limpieza?",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ5IrYkpyxjYNGb9XnYs",
+              "phase" : "final_answer",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            }
+          ],
+          "recipient" : "Perdón, me equivoqué: es a las once, no a las diez. Hay que llegar 15 minutos antes.",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 3328,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 3328
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3529
+            },
+            "input_tokens" : 3529,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 114,
+              "text_tokens" : 159
+            },
+            "output_tokens" : 159,
+            "total_tokens" : 3688
+          }
+        }
+      ]
+    },
+    {
+      "case" : "confirmed",
+      "turns" : [
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Hola, soy Ember, una asistente de IA que llama en nombre de Alex. Ese horario encaja bien: miércoles 16 de septiembre de 2026 a las 11:00 para una limpieza de 30 minutos, y el costo de 5000 yenes está dentro de lo autorizado.\n\nComo no hay preparación ni llegada anticipada, ¿puede por favor finalizar la reserva a nombre de Alex Rivera y confirmarme que queda agendada?",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ5LmWdFqnmTlJvr0tON",
+              "phase" : "final_answer",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            }
+          ],
+          "recipient" : "Para la limpieza de Alex Rivera tenemos el miércoles 16 de septiembre de 2026 a las 11:00, en nuestra clínica Sakura. Dura 30 minutos, cuesta 5000 yenes, no hace falta preparación ni llegar antes.",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 0,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 0
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3493
+            },
+            "input_tokens" : 3493,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 111,
+              "text_tokens" : 206
+            },
+            "output_tokens" : 206,
+            "total_tokens" : 3699
+          }
+        },
+        {
+          "output" : [
+            {
+              "arguments" : "{\"reason\":\"objective_completed\"}",
+              "call_id" : "call_ZBCv88TDHsR48bfF",
+              "id" : "item_ENQ5NjRCdWI2K8J8orVXV",
+              "name" : "end_session",
+              "status" : "completed",
+              "type" : "function_call"
+            }
+          ],
+          "recipient" : "Sí, la cita de Alex Rivera queda confirmada para esa limpieza el miércoles 16 a las 11:00. No necesita nada más.",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 3456,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 3456
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 3623
+            },
+            "input_tokens" : 3623,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 25,
+              "text_tokens" : 44
+            },
+            "output_tokens" : 44,
+            "total_tokens" : 3667
+          }
+        },
+        {
+          "output" : [
+            {
+              "content" : [
+                {
+                  "text" : "Perfecto, queda confirmada la limpieza de Alex Rivera para el miércoles 16 a las 11:00. Gracias por su tiempo, hasta luego.",
+                  "type" : "output_text"
+                }
+              ],
+              "id" : "item_ENQ5O40RDWMwxBTtuIQdT",
+              "phase" : "final_answer",
+              "role" : "assistant",
+              "status" : "completed",
+              "type" : "message"
+            }
+          ],
+          "phase" : "farewell",
+          "status" : "completed",
+          "usage" : {
+            "input_token_details" : {
+              "audio_tokens" : 0,
+              "cached_tokens" : 0,
+              "cached_tokens_details" : {
+                "audio_tokens" : 0,
+                "image_tokens" : 0,
+                "text_tokens" : 0
+              },
+              "image_tokens" : 0,
+              "text_tokens" : 825
+            },
+            "input_tokens" : 825,
+            "output_token_details" : {
+              "audio_tokens" : 0,
+              "reasoning_tokens" : 32,
+              "text_tokens" : 67
+            },
+            "output_tokens" : 67,
+            "total_tokens" : 892
+          }
+        }
+      ]
+    }
+  ],
+  "date" : "2026-09-12T22:02:06Z",
+  "fictional_data" : true,
+  "modality" : "text",
+  "model" : "gpt-realtime-2.1"
+}

@@ -2,75 +2,78 @@ import SwiftUI
 
 struct CallReviewView: View {
     @Environment(CallController.self) private var controller
+    @Environment(AppSettings.self) private var settings
     @State private var showsRealtimeTest = false
     private var definition: CallDefinition { controller.definition }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Does everything look right?").font(.largeTitle.bold()).tracking(-1)
-                HStack(spacing: 16) {
-                    Image(systemName: "calendar").font(.title).foregroundStyle(Ember.orange)
+                Text("Ready for the conversation?").font(.largeTitle.bold()).tracking(-0.8)
+                Text("Check the details, then choose how to try them.")
+                    .foregroundStyle(Ember.secondary)
+                HStack(alignment: .top, spacing: 16) {
+                    Image(systemName: "calendar").font(.title2).foregroundStyle(Ember.orange)
                         .padding(16).background(Ember.peach, in: RoundedRectangle(cornerRadius: 18))
                     VStack(alignment: .leading, spacing: 6) {
-                        if definition.contactName.isEmpty {
-                            Text("Your appointment").font(.title3.bold())
-                        } else {
-                            Text(definition.contactName).font(.title3.bold())
-                        }
-                        Text(definition.phoneNumber).font(.subheadline).foregroundStyle(Ember.secondary)
+                        Text(definition.contactName.isEmpty ? appLocalized("Your appointment") : definition.contactName).font(.title3.bold())
+                        Text(definition.objective).foregroundStyle(Ember.secondary)
                     }
                 }
                 VStack(alignment: .leading, spacing: 20) {
-                    row("APPOINTMENT FOR", value: definition.objective)
-                    row("YOUR AVAILABILITY", value: definition.availability, emptyFallback: "Ask me before agreeing to a time")
+                    row("Availability", value: definition.availability, fallback: "Ask me before agreeing to a time")
                     Divider()
-                    row("AGENT LANGUAGE", value: definition.agentLanguage)
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("Agent language").font(.subheadline.weight(.semibold)).foregroundStyle(Ember.secondary)
+                        Text(LocalizedStringKey(definition.agentLanguage))
+                    }
                     Divider()
-                    row("PREFERENCES & PERMISSIONS", value: definition.additionalInstructions)
+                    row("Preferences & permissions", value: definition.additionalInstructions, fallback: "Follow my availability and ask about anything unknown.")
+                    Divider()
+                    row("Booking name", value: [settings.userIdentity.givenName, settings.userIdentity.familyName].filter { !$0.isEmpty }.joined(separator: " "), fallback: "Ember will ask when a name is needed.")
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 24))
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Milestone 3 · Voice rehearsal").font(.headline)
-                    Text("Test the agent with these details before connecting it to a phone call.")
+                    .background(.white, in: RoundedRectangle(cornerRadius: 24))
+                VStack(alignment: .leading, spacing: 14) {
+                    Label("Phone call · You speak", systemImage: "phone").font(.headline)
+                    Text("This calls a real number using your microphone. Ember’s AI voice does not join this call yet.")
                         .font(.subheadline).foregroundStyle(Ember.secondary)
-                    Button { showsRealtimeTest = true } label: {
-                        Label("Test OpenAI voice", systemImage: "waveform")
-                    }.buttonStyle(.bordered).frame(minHeight: 44)
-                }
-                EmberAssurance()
+                    if definition.canPlaceCall {
+                        Text(PhoneNumberInput.display(definition.phoneNumber)).font(.headline).textSelection(.enabled)
+                        Button(action: controller.executeCall) {
+                            Label("Call this number", systemImage: "phone.arrow.up.right")
+                                .font(.headline).frame(maxWidth: .infinity, minHeight: 48)
+                        }.buttonStyle(.bordered).tint(Ember.ink).accessibilityIdentifier("review-phone-call")
+                        Text("A real call will be placed. Calling charges may apply.")
+                            .font(.caption).foregroundStyle(Ember.secondary)
+                    } else {
+                        Button("Add a valid phone number", action: controller.editCall)
+                            .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+                    }
+                }.padding(20).background(Ember.peach.opacity(0.35), in: RoundedRectangle(cornerRadius: 24))
             }.padding(24).frame(maxWidth: 568).frame(maxWidth: .infinity)
         }
         .safeAreaInset(edge: .bottom) {
             EmberFooter {
-                VStack(spacing: 12) {
-                    Text("A real Telnyx call will be placed. Carrier charges may apply.")
+                VStack(spacing: 10) {
+                    EmberPrimaryButton(title: "Rehearse with Ember", icon: "waveform") { showsRealtimeTest = true }
+                        .accessibilityIdentifier("review-rehearse")
+                    Text("You play the receptionist. No phone number is dialed.")
                         .font(.caption).foregroundStyle(Ember.secondary)
-                    EmberPrimaryButton(title: "Execute call", icon: "phone") { controller.executeCall() }
                 }
             }
         }
-        .sheet(isPresented: $showsRealtimeTest) {
-            RealtimeTestView(definition: definition)
-        }
-        .navigationTitle("Review appointment")
+        .sheet(isPresented: $showsRealtimeTest) { RealtimeTestView(definition: definition) }
+        .navigationTitle("Review details")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Edit", action: controller.editCall).frame(minHeight: 44)
             }
         }
     }
-    private func row(
-        _ label: LocalizedStringKey,
-        value: String,
-        emptyFallback: LocalizedStringKey = "Not specified"
-    ) -> some View {
+    private func row(_ label: LocalizedStringKey, value: String, fallback: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(label).font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(Ember.secondary)
-            if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(emptyFallback).font(.body)
-            } else {
-                Text(value).font(.body)
-            }
-        }
+            Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(Ember.secondary)
+            if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { Text(fallback) }
+            else { Text(value) }
+        }.fixedSize(horizontal: false, vertical: true)
     }
 }

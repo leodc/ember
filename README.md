@@ -12,10 +12,11 @@ cambios conceptuales deben añadirse aquí con su fecha, motivo y efecto en el
 alcance o en los criterios de aceptación, conservando el texto original como
 referencia histórica.
 
-- [Estado consolidado del POC y próximo milestone](docs/POCStateAndMilestone4.md)
+- [Estado consolidado del POC](docs/POCStateAndMilestone4.md)
 - [Revisión integral de experiencia, icono y agente](docs/AppExperienceReview.md)
 - [Decisiones vigentes](#decisiones-vigentes)
-- [Estado de implementación](#current-scope-milestone-4)
+- [Milestone 5: puente Telnyx–OpenAI](docs/Milestone5RealtimeBridge.md)
+- [Estado de implementación](#current-scope-milestones-1-6-complete)
 - [Configuración de Telnyx](#configure-telnyx)
 - [Ejecución y prueba manual](#open-and-run)
 - [Especificación original completa](#especificación-original-completa)
@@ -26,14 +27,61 @@ El **milestone 4 está validado y completado por el usuario el 2026-09-13**.
 Incluye `ask_user`, transcripción de ambas voces, instrucciones escritas con
 interrupción inmediata y la revisión integral de interfaz y comportamiento del agente.
 
-El siguiente paso es el **milestone 5: validar e implementar el puente de audio
-entre Telnyx y OpenAI Realtime**. Ambos servicios siguen separados en esta versión.
+Los **milestones 5 y 6 están validados y completados por el usuario el
+2026-09-14**. El puente PCM conecta Telnyx y OpenAI Realtime en el iPhone; Ember
+puede conversar con la persona que responde, pedir datos mediante `ask_user` y
+reanudar la llamada sin que el usuario hable. La evidencia de implementación y
+pruebas queda en [Milestone 5](docs/Milestone5RealtimeBridge.md).
 Leer el [estado consolidado](docs/POCStateAndMilestone4.md) y la
 [revisión de experiencia](docs/AppExperienceReview.md) para continuar.
 Las notas fechadas anteriores conservan sus resultados y pendientes históricos;
 la aceptación de cierre registrada a continuación prevalece como estado del milestone.
 
 ### Decisiones vigentes
+
+#### Milestones 5 y 6 validados y completados — 2026-09-14
+
+- El usuario acepta el puente de audio Telnyx–OpenAI y el flujo completo durante
+  una llamada real, incluido `ask_user` y la reanudación de la conversación.
+- El receptor puede hablar con Ember y oír su respuesta generada por OpenAI sin
+  que el usuario tenga que intervenir con el micrófono del iPhone.
+- La llamada conserva las instrucciones escritas, la transcripción, las reglas
+  de cierre y las protecciones frente a audio pendiente o eventos tardíos.
+- Con esta aceptación se cierran los milestones 5 y 6. Las notas de validación
+  física y diseño del puente se mantienen como evidencia técnica.
+
+#### Tono/retorno validados y conexión Telnyx–OpenAI — 2026-09-13
+
+- El usuario confirma tono audible, retorno de voz correcto y cierre desde ambos
+  teléfonos y al pasar Ember a segundo plano. Las dos capturas muestran cero
+  errores de audio y cero ciclos retrasados. [Evidencia](docs/Milestone5RealtimeBridge.md).
+- Se conecta el audio del receptor con OpenAI y su respuesta con Telnyx mediante
+  dos dispositivos PCM virtuales WebRTC, con colas acotadas dentro del iPhone.
+  No se añade un backend de audio ni se utiliza el micrófono/altavoz local.
+- Se conserva WebRTC en OpenAI para reutilizar el transporte, transcripción,
+  herramientas e instrucciones del M4. La alternativa WebSocket/24 kHz anterior
+  queda como investigación, no como arquitectura implementada.
+- Se añade **Llamada telefónica · Habla Ember**. Solo marca tras pulsar **Llamar
+  con Ember** y preparar Realtime. Los cierres liberan ambas conexiones.
+- El tono/retorno físico quedó validado antes de la conversación completa. Esta
+  nota describe el estado intermedio y queda sustituida por la aceptación del
+  2026-09-14.
+
+
+#### Milestone 5 iniciado: prueba PCM antes de OpenAI — 2026-09-13
+
+- Se sigue el orden de la investigación: validar captura e inyección mediante
+  tono y retorno de voz antes de integrar el audio de OpenAI.
+- Se incorpora TelnyxRTC 4.2.0 como paquete local con un parche de tres archivos
+  para recibir un `RTCAudioDevice` por cliente/llamada. WebRTC sigue en M150.
+  La llamada normal conserva el dispositivo de audio estándar.
+- **Probar el puente de audio** abre una prueba explícita: teléfono real, tono de
+  un segundo y retorno opcional de la voz con 300 ms de retraso. No utiliza el
+  micrófono ni el altavoz del iPhone. No conecta aún Realtime ni `ask_user`.
+- El intercambio de PCM entre dos peers WebRTC reales pasó en simulador. Esto
+  no acredita audio PSTN en el iPhone ni cierra el milestone. La siguiente
+  validación física y sus contadores están en [Milestone 5](docs/Milestone5AudioBridge.md).
+
 
 #### Milestone 4 validado y completado — 2026-09-13
 
@@ -337,9 +385,20 @@ Criterios de aceptación al implementar `ask_user`:
 - Se añade autoscroll a la transcripción para seguir el texto durante la respuesta.
   La comprobación visual de este último ajuste queda pendiente en el iPhone.
 
-## Current scope: Milestone 4
+## Current scope: Milestones 1–6 complete
 
-Implementado y conservado para el siguiente milestone:
+The user has accepted milestones 5 and 6 on 2026-09-14. Ember now has the
+complete prototype flow: outgoing Telnyx call, on-device PCM bridge to OpenAI
+Realtime, live conversation, `ask_user`, written instructions, and controlled
+call completion.
+
+See [the bridge implementation](docs/Milestone5RealtimeBridge.md), the
+[initial PCM probe](docs/Milestone5AudioBridge.md), and the
+[Telnyx source patch](Vendor/telnyx-webrtc-ios/EMBER_PATCH.md).
+
+### Completed scope: Milestones 1–6
+
+Implementado y conservado como alcance del prototipo:
 
 - Formulario SwiftUI, revisión, validación E.164 japonesa y selección de disponibilidad.
 - TelnyxRTC 4.2.0: llamadas salientes reales con audio humano, estados, duración y cierre.
@@ -355,14 +414,18 @@ Implementado y conservado para el siguiente milestone:
 - Transcripción de agente e interlocutor con autoscroll, errores localizados, ajustes de VAD/ruido y diagnóstico de audio.
 - `ask_user` con modal localizado, sugerencias, texto libre, espera y resultado asociado a su sesión.
 - Instrucciones escritas del usuario durante la sesión, con interrupción inmediata y reanudación.
+- Puente PCM bidireccional Telnyx–OpenAI Realtime en el iPhone, sin utilizar el
+  micrófono ni el altavoz como bucle de audio principal.
+- Llamada telefónica con Ember: conversación del receptor, respuesta de OpenAI,
+  `ask_user` y reanudación dentro de una misma llamada.
 
-El milestone 4 queda **validado y completado por el usuario el 2026-09-13**.
+Los milestones 1–6 quedan **validados y completados por el usuario el
+2026-09-14**.
 La revisión de pantallas y del agente está documentada en [Revisión integral](docs/AppExperienceReview.md).
-Verificación técnica: **54 pruebas aprobadas, 0 fallos**, compilaciones Debug para
-simulador y Release para iPhone correctas (Release sin firma). Los últimos ajustes
-de presentación se recompilaron después de las regresiones.
+Verificación técnica actual: **80 pruebas aprobadas, 0 fallos**, compilaciones
+Debug para simulador y Release para iPhone correctas (Release sin firma). El
+conteo incluye las regresiones del puente PCM, cierre y flujo integrado.
 
-Siguiente milestone: **5 — puente de audio**; después, **6 — flujo completo**.
 No hay integración con reservas/calendarios externos, historial persistente,
 CallKit, llamadas entrantes ni backend. Realtime y Telnyx siguen separados.
 

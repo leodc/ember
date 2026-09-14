@@ -16,12 +16,16 @@ histórico, pero sus pendientes antiguos no sustituyen este estado consolidado.
 | 2 — Telnyx saliente | Validado por el usuario: audio bidireccional y cierre |
 | 3 — Realtime independiente | Conversación validada por el usuario, con las ampliaciones descritas aquí |
 | 4 — `ask_user` | Validado y completado por el usuario el 2026-09-13 |
-| 5 — Puente de audio | Pendiente, viabilidad experimental no demostrada |
+| 5 — Puente de audio | En curso: tono/retorno y cierres validados en iPhone; puente OpenAI implementado, conversación real pendiente |
 | 6 — Flujo completo durante llamada | Pendiente del puente y su validación integral |
 
-Hay **dos pruebas separadas**: «Llamada telefónica · Hablas tú» usa Telnyx con micrófono humano;
-«Ensayar con Ember» abre Realtime sin marcar ningún teléfono. El agente aún no
-conversa con el receptor de una llamada Telnyx.
+El avance del M5 se registra en [Milestone5RealtimeBridge](Milestone5RealtimeBridge.md).
+El usuario validó tono/retorno y cierres; la conversación de OpenAI por teléfono
+es la siguiente validación. El milestone permanece abierto.
+
+Se conservan las **dos experiencias del milestone 4**: «Llamada telefónica · Hablas tú» usa Telnyx con micrófono humano;
+«Ensayar con Ember» abre Realtime sin marcar ningún teléfono. Esas dos experiencias se conservan. El M5 añade una tercera con el agente
+conectado a Telnyx, pendiente de validación física conversacional.
 
 El usuario validó voz, selección de idioma, identidad y una conversación que
 respeta el objetivo sin terminar por una pregunta pertinente desconocida. Reportó

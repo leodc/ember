@@ -32,6 +32,7 @@ final class RealtimeTestController {
     }
     private(set) var endedByAgent = false
     private(set) var transcripts: [Transcript] = []
+    private(set) var bridgeDiagnostics: AudioBridgeSnapshot?
     private var attempt: UUID?
     private var service: (any RealtimeServicing)?
     private var connectionTask: Task<Void, Never>?
@@ -39,13 +40,16 @@ final class RealtimeTestController {
     private let makeService: @MainActor () -> any RealtimeServicing
     private let configuration: () throws -> RealtimeConfiguration
     private let permission: () async -> Bool
+    private let connectionTimeout: Duration
 
     init(makeService: @escaping @MainActor () -> any RealtimeServicing = { OpenAIRealtimeClient() },
          configuration: @escaping () throws -> RealtimeConfiguration = { try RealtimeConfiguration.load() },
-         permission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() }) {
+         permission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
+         connectionTimeout: Duration = .seconds(40)) {
         self.makeService = makeService
         self.configuration = configuration
         self.permission = permission
+        self.connectionTimeout = connectionTimeout
     }
 
     func start(definition: CallDefinition, language: AppLanguage) {
@@ -54,6 +58,7 @@ final class RealtimeTestController {
         attempt = id
         state = .connecting
         transcripts = []
+        bridgeDiagnostics = nil
         endedByAgent = false
         connectionTask = Task { [weak self] in
             guard let self else { return }
@@ -69,7 +74,7 @@ final class RealtimeTestController {
                     self.receive(event)
                 }
                 self.timeoutTask = Task { [weak self] in
-                    do { try await Task.sleep(for: .seconds(40)) } catch { return }
+                    do { try await Task.sleep(for: self?.connectionTimeout ?? .seconds(40)) } catch { return }
                     guard let self, self.attempt == id, self.state == .connecting else { return }
                     self.fail(.timeout)
                 }
@@ -127,6 +132,7 @@ final class RealtimeTestController {
 
     private func receive(_ event: RealtimeEvent) {
         switch event {
+        case .bridgeDiagnostics(let snapshot): bridgeDiagnostics = snapshot
         case .ready:
             timeoutTask?.cancel()
             timeoutTask = nil
@@ -160,6 +166,9 @@ final class RealtimeTestController {
         case .endedByAgent:
             guard state == .ending, !instructionSending else { return }
             endedByAgent = true
+            release()
+            state = .ended
+        case .endedByRecipient:
             release()
             state = .ended
         case .failed(let error): fail(error)

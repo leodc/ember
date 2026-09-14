@@ -18,11 +18,10 @@ struct RealtimeConfiguration: Sendable {
 }
 
 enum RealtimeSessionContext {
-    static func instructions(for definition: CallDefinition, userLanguage: AppLanguage) -> String {
+    static func instructions(for definition: CallDefinition, userLanguage: AppLanguage, telephone: Bool = false) -> String {
         """
         You are Ember, an AI telephone assistant acting on behalf of the app user.
-        This is a local voice rehearsal, not a real telephone call. The person speaking
-        into the microphone is playing the recipient/receptionist. Converse with them
+        \(telephone ? "This is a real outgoing telephone call. The incoming audio is the actual telephone recipient, not the app user." : "This is a local voice rehearsal, not a real telephone call. The person speaking into the microphone is playing the recipient/receptionist.") Converse with them
         naturally and politely in \(definition.agentLanguage), even if they speak another language.
         Briefly disclose that you are an AI assistant at the beginning. Be concise.
         RECIPIENT EXPERIENCE:
@@ -244,9 +243,9 @@ enum RealtimeSessionContext {
         return "Finish naturally in \(language), in one or two short sentences. \(outcome) If the outcome was already clearly stated, do not repeat it. Thank the recipient and say goodbye. Do not ask questions, add new facts, announce more checks, promise a transfer or callback, or mention internal rules. The session disconnects after this audio."
     }
 
-    static func session(for definition: CallDefinition, userLanguage: AppLanguage, model: String) -> [String: Any] {
+    static func session(for definition: CallDefinition, userLanguage: AppLanguage, model: String, telephone: Bool = false) -> [String: Any] {
         ["type": "realtime", "model": model,
-         "instructions": instructions(for: definition, userLanguage: userLanguage),
+         "instructions": instructions(for: definition, userLanguage: userLanguage, telephone: telephone),
          "output_modalities": ["audio"], "tools": [AskUserRequest.tool, [
              "type": "function", "name": "end_session",
              "description": "End only after completing the objective with no pending questions, an explicit recipient or app-user request to end, or an explicit mutual agreement to end with the request pending. Never end merely because user information is unknown. The app requests a final goodbye before disconnecting.",
@@ -264,10 +263,13 @@ enum RealtimeSessionContext {
 }
 
 enum RealtimeError: LocalizedError {
+    case telephone(String), bridgeAudio
     case configuration, permission, connection, timeout, audio, service(Int), rejected, farewellTimeout, instructionTimeout
 
     var errorDescription: String? {
         switch self {
+        case .telephone(let message): message
+        case .bridgeAudio: appLocalized("The audio bridge could not keep up. The call has ended; start a new call.")
         case .instructionTimeout: appLocalized("The instruction could not be sent in time. Start a new voice test.")
         case .farewellTimeout: appLocalized("The session closed because the final goodbye could not finish. The booking status has not changed.")
         case .configuration: appLocalized("Configure OPENAI_API_KEY in Config.local.xcconfig and rebuild the app.")

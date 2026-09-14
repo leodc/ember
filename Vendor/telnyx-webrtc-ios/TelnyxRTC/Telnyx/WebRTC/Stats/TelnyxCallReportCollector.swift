@@ -1,0 +1,1434 @@
+//
+//  TelnyxCallReportCollector.swift
+//  TelnyxRTC
+//
+//  Created by OpenClaw on 2026-02-09.
+//  Copyright © 2026 Telnyx LLC. All rights reserved.
+//
+
+import Foundation
+import WebRTC
+
+/// Configuration options for the call report collector
+public struct CallReportConfig {
+    /// Enable or disable call report collection
+    public let enabled: Bool
+    
+    /// Interval in seconds for collecting call statistics
+    public let interval: TimeInterval
+    
+    public init(enabled: Bool = true, interval: TimeInterval = 5.0) {
+        self.enabled = enabled
+        self.interval = interval
+    }
+}
+
+/// Collects WebRTC statistics during a call and posts them to voice-sdk-proxy
+/// at the end of the call for quality analysis and debugging.
+///
+/// Stats Collection Strategy (based on Twilio/Jitsi best practices):
+/// - Collects stats at regular intervals (default 5 seconds)
+/// - Stores cumulative values (packets, bytes) from WebRTC API
+/// - Calculates averages for variable metrics (audio level, jitter, RTT)
+/// - Uses in-memory buffer with size limits for long calls
+/// - Posts aggregated stats to voice-sdk-proxy on call end
+public class TelnyxCallReportCollector {
+    
+    // MARK: - Properties
+    
+    /// Shared ISO8601 formatter with fractional seconds for consistent timestamp formatting
+    private static let iso8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    
+    private let config: CallReportConfig
+    private let logCollectorConfig: LogCollectorConfig
+    private weak var peerConnection: RTCPeerConnection?
+    private var timer: Timer?
+    private var isMediaVerificationSamplingEnabled = false
+    /// Native WebRTC statistics complete asynchronously. Keep one request in
+    /// flight so timer ticks cannot process the same interval twice.
+    private let statsCollectionLock = NSLock()
+    private var isStatsCollectionInFlight = false
+    private var statsBuffer: [CallReportInterval] = []
+    private var intervalStartTime: Date?
+    private(set) var callStartTime: Date
+    private(set) var callEndTime: Date?
+    private let logCollector: TelnyxLogCollector?
+    
+    // Accumulated values for averaging within an interval
+    private var intervalAudioLevels: (outbound: [Double], inbound: [Double]) = ([], [])
+    private var intervalJitters: [Double] = []
+    private var intervalRTTs: [Double] = []
+    private var intervalBitrates: (outbound: [Double], inbound: [Double]) = ([], [])
+
+    /// Delivers the audio inbound packet counter from the collector's normal
+    /// WebRTC sample, allowing call recovery to avoid a duplicate stats query.
+    internal var onInboundRtpSample: ((Int) -> Void)?
+    
+    // Previous values for rate calculations
+    private var previousStats = PreviousStats()
+    
+    // Maximum buffer size to prevent memory issues on long calls
+    private let maxBufferSize = 360 // 30 minutes at 5-second intervals
+
+    // Flush thresholds for intermediate segment reporting (matches JS SDK)
+    let statsFlushThreshold = 300  // ~25 min at 5s intervals
+    let logsFlushThreshold = 800
+    private let intermediateFlushInterval: TimeInterval = 180
+    private var lastIntermediateFlushTime: Date?
+
+    // Segment tracking for intermediate flushes
+    private var segmentIndex: Int = 0
+    private var isFlushing: Bool = false
+
+    /// Callback invoked when stats or log buffers approach their flush thresholds.
+    /// Set by `Call` to trigger an intermediate report POST.
+    var onFlushNeeded: (() -> Void)?
+
+    // Retry configuration for HTTP POST (aligned with Android)
+    private let maxRetryAttempts = 3
+    private let retryBaseDelay: TimeInterval = 1.0
+
+    internal static let maxPayloadSizeBytes = 2 * 1024 * 1024
+    internal static let safePayloadSizeBytes = Int(1.9 * 1024 * 1024)
+
+    private let uploadQueue = DispatchQueue(label: "com.telnyx.call-report-upload")
+    private var isUploadingPendingReports = false
+    
+    // MARK: - Initialization
+    
+    public init(config: CallReportConfig = CallReportConfig(), logCollectorConfig: LogCollectorConfig = LogCollectorConfig()) {
+        self.config = config
+        self.logCollectorConfig = logCollectorConfig
+        self.callStartTime = Date()
+        
+        // Create log collector if enabled — start immediately to capture setup/negotiation logs
+        if logCollectorConfig.enabled {
+            self.logCollector = TelnyxLogCollector(config: logCollectorConfig)
+            self.logCollector?.start()
+        } else {
+            self.logCollector = nil
+        }
+
+        replayPendingUploads()
+    }
+    
+    // MARK: - Public Methods
+    
+    /// Start collecting stats from the peer connection
+    /// - Parameter peerConnection: The RTCPeerConnection to monitor
+    public func start(peerConnection: RTCPeerConnection) {
+        guard config.enabled else { return }
+        
+        self.peerConnection = peerConnection
+        self.intervalStartTime = Date()
+        self.lastIntermediateFlushTime = self.intervalStartTime
+        
+        Logger.log.i(message: "TelnyxCallReportCollector: Starting stats collection (interval: \(config.interval)s, logCollectorActive: \(logCollector?.isActive() ?? false))")
+
+        logCollector?.addEntry(
+            level: "info",
+            message: "CallReportCollector: Starting stats and log collection",
+            context: ["interval": config.interval, "logLevel": logCollectorConfig.level]
+        )
+
+        // Schedule on main RunLoop — start() may be called from a WebRTC background thread
+        // where RunLoop.current is not running, which would prevent the timer from firing.
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.scheduleStatsTimer()
+        }
+    }
+
+    /// Temporarily increases the existing collector cadence while an ICE
+    /// restart is verifying media. Normal reporting remains at the configured
+    /// interval; this does not introduce a second stats query.
+    internal func setMediaVerificationSamplingEnabled(_ enabled: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self,
+                  self.isMediaVerificationSamplingEnabled != enabled else { return }
+            self.isMediaVerificationSamplingEnabled = enabled
+            self.scheduleStatsTimer()
+        }
+    }
+
+    /// Stop collecting stats and prepare for final report
+    public func stop() {
+        // Timer was scheduled on main RunLoop, must invalidate there
+        DispatchQueue.main.async { [weak self] in
+            self?.timer?.invalidate()
+            self?.timer = nil
+        }
+        
+        callEndTime = Date()
+        
+        // Collect final stats before stopping
+        if peerConnection != nil && intervalStartTime != nil {
+            collectStats()
+        }
+        
+        // Stop log collector
+        let logCount = logCollector?.getLogCount() ?? 0
+        logCollector?.stop()
+        
+        Logger.log.i(message: "TelnyxCallReportCollector: Stopped stats collection (totalIntervals: \(statsBuffer.count), totalLogs: \(logCount), duration: \(callEndTime?.timeIntervalSince(callStartTime) ?? 0)s)")
+    }
+    
+    /// Post the final collected stats to voice-sdk-proxy
+    /// - Parameters:
+    ///   - summary: Call summary information
+    ///   - callReportId: Call report ID from REGED message
+    ///   - host: WebSocket host URL (will be converted to HTTP)
+    ///   - voiceSdkId: Optional voice SDK ID
+    public func postReport(summary: CallReportSummary, callReportId: String, host: String, voiceSdkId: String? = nil) {
+        guard config.enabled && !statsBuffer.isEmpty else {
+            Logger.log.i(message: "TelnyxCallReportCollector: Skipping report post (enabled: \(config.enabled), stats: \(statsBuffer.count))")
+            return
+        }
+
+        // Get collected logs (non-destructive for final report)
+        let logs = logCollector?.getLogs()
+
+        // Only include segment in final report if intermediate flushes happened
+        let segment: Int? = segmentIndex > 0 ? segmentIndex : nil
+
+        // Build the report payload
+        let payload = CallReportPayload(
+            summary: summary,
+            stats: statsBuffer,
+            logs: logs,
+            segment: segment
+        )
+
+        Logger.log.i(message: "TelnyxCallReportCollector: Posting final report (intervals: \(statsBuffer.count), logEntries: \(logs?.count ?? 0), segment: \(segment.map { "\($0)" } ?? "nil"), callId: \(summary.callId))")
+
+        sendPayload(payload, callReportId: callReportId, host: host, voiceSdkId: voiceSdkId)
+    }
+
+    /// Build an intermediate segment payload by snapshotting and clearing the current buffers.
+    /// - Parameter summary: Call summary (typically without `endTimestamp` since the call is still active)
+    /// - Returns: A `CallReportPayload` with a `segment` index, or `nil` if already flushing or buffer is empty
+    func flush(summary: CallReportSummary) -> CallReportPayload? {
+        guard !isFlushing && !statsBuffer.isEmpty else { return nil }
+
+        isFlushing = true
+        defer { isFlushing = false }
+
+        let currentSegment = segmentIndex
+        segmentIndex += 1
+        lastIntermediateFlushTime = Date()
+
+        // Snapshot and clear stats buffer
+        let stats = statsBuffer
+        statsBuffer.removeAll()
+
+        // Drain logs (destructive — prevents re-sending)
+        let logs = logCollector?.drain()
+
+        Logger.log.i(message: "TelnyxCallReportCollector: Flushing segment \(currentSegment) (stats: \(stats.count), logs: \(logs?.count ?? 0))")
+
+        return CallReportPayload(
+            summary: summary,
+            stats: stats,
+            logs: logs,
+            segment: currentSegment
+        )
+    }
+
+    /// Encode and send a `CallReportPayload` to the voice-sdk-proxy endpoint.
+    /// Reusable for both intermediate segment flushes and the final report.
+    /// - Parameters:
+    ///   - payload: The report payload to send
+    ///   - callReportId: Call report ID from REGED message
+    ///   - host: WebSocket host URL (will be converted to HTTP)
+    ///   - voiceSdkId: Optional voice SDK ID
+    func sendPayload(_ payload: CallReportPayload, callReportId: String, host: String, voiceSdkId: String? = nil) {
+        // Derive HTTP endpoint from WebSocket URL
+        guard let wsUrl = URL(string: host) else {
+            Logger.log.e(message: "TelnyxCallReportCollector: Invalid host URL: \(host)")
+            return
+        }
+
+        let scheme = wsUrl.scheme?.replacingOccurrences(of: "ws", with: "http") ?? "https"
+        let rawHost = wsUrl.host ?? "rtc.telnyx.com"
+        // IPv6 literals must be bracketed in URLs
+        let urlHost = rawHost.contains(":") ? "[\(rawHost)]" : rawHost
+        let endpoint = "\(scheme)://\(urlHost)\(wsUrl.port.map { ":\($0)" } ?? "")/call_report"
+
+        guard URL(string: endpoint) != nil else {
+            Logger.log.e(message: "TelnyxCallReportCollector: Failed to construct endpoint URL from: \(endpoint)")
+            return
+        }
+
+        Logger.log.i(message: "TelnyxCallReportCollector: Sending payload (host: \(host), endpoint: \(endpoint), callReportId: \(callReportId), voiceSdkId: \(voiceSdkId ?? "nil"), intervals: \(payload.stats.count), logEntries: \(payload.logs?.count ?? 0), segment: \(payload.segment.map { "\($0)" } ?? "nil"), callId: \(payload.summary.callId))")
+
+        let payloads: [Data]
+        do {
+            payloads = try Self.chunkedPayloadData(for: payload)
+        } catch {
+            Logger.log.e(message: "TelnyxCallReportCollector: Failed to encode payload: \(error)")
+            return
+        }
+
+        if payloads.count > 1 {
+            Logger.log.i(message: "TelnyxCallReportCollector: Split report into \(payloads.count) chunks")
+        }
+
+        let uploads = payloads.enumerated().map { index, data in
+            PendingCallReportUpload(
+                endpoint: endpoint,
+                callReportId: callReportId,
+                callId: payload.summary.callId,
+                voiceSdkId: voiceSdkId,
+                segment: payload.segment,
+                chunkIndex: index,
+                body: data
+            )
+        }
+
+        uploadQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard self.persist(uploads) else { return }
+            self.cleanup()
+            self.processPendingUploads()
+        }
+    }
+
+    internal static func chunkedPayloadData(for payload: CallReportPayload) throws -> [Data] {
+        let encoder = JSONEncoder()
+        let encodedPayload = try encoder.encode(payload)
+        guard encodedPayload.count > maxPayloadSizeBytes, !payload.stats.isEmpty else {
+            return [encodedPayload]
+        }
+
+        var chunks: [Data] = []
+        var currentStats: [CallReportInterval] = []
+
+        for stat in payload.stats {
+            let candidateStats = currentStats + [stat]
+            let candidate = CallReportPayload(
+                summary: payload.summary,
+                stats: candidateStats,
+                logs: payload.logs,
+                segment: payload.segment
+            )
+            let candidateData = try encoder.encode(candidate)
+
+            if candidateData.count > safePayloadSizeBytes, !currentStats.isEmpty {
+                let chunk = CallReportPayload(
+                    summary: payload.summary,
+                    stats: currentStats,
+                    logs: payload.logs,
+                    segment: payload.segment
+                )
+                chunks.append(try encoder.encode(chunk))
+                currentStats = [stat]
+            } else {
+                currentStats = candidateStats
+            }
+        }
+
+        if !currentStats.isEmpty {
+            let chunk = CallReportPayload(
+                summary: payload.summary,
+                stats: currentStats,
+                logs: payload.logs,
+                segment: payload.segment
+            )
+            chunks.append(try encoder.encode(chunk))
+        }
+
+        return chunks
+    }
+
+    internal func isIntermediateFlushDue(at date: Date = Date()) -> Bool {
+        date.timeIntervalSince(lastIntermediateFlushTime ?? callStartTime) >= intermediateFlushInterval
+    }
+
+    #if DEBUG
+    private class AllowSelfSignedDelegate: NSObject, URLSessionDelegate {
+        func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
+                        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+            let host = challenge.protectionSpace.host
+            let urlHost: String
+            if host.contains(":") {
+                urlHost = "[\(host)]"  // IPv6 literal — needs bracketing
+            } else {
+                urlHost = host
+            }
+            guard let checkUrl = URL(string: "https://\(urlHost)"),
+                  SSLValidationHelper.shouldAllowSelfSigned(for: checkUrl) else {
+                completionHandler(.performDefaultHandling, nil)
+                return
+            }
+            if let serverTrust = challenge.protectionSpace.serverTrust {
+                completionHandler(.useCredential, URLCredential(trust: serverTrust))
+            } else {
+                completionHandler(.performDefaultHandling, nil)
+            }
+        }
+    }
+    #endif
+
+    #if DEBUG
+    private static let localSession: URLSession = {
+        let delegate = AllowSelfSignedDelegate()
+        return URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+    }()
+    #endif
+
+    private func urlSession(for url: URL) -> URLSession {
+        #if DEBUG
+        if SSLValidationHelper.shouldAllowSelfSigned(for: url) {
+            return Self.localSession
+        }
+        return URLSession.shared
+        #else
+        return URLSession.shared
+        #endif
+    }
+
+    private struct PendingCallReportUpload: Codable {
+        let endpoint: String
+        let callReportId: String
+        let callId: String
+        let voiceSdkId: String?
+        let segment: Int?
+        let chunkIndex: Int
+        let body: Data
+    }
+
+    private enum UploadResult {
+        case delivered
+        case retryLater
+        case discard
+    }
+
+    private func replayPendingUploads() {
+        uploadQueue.async { [weak self] in
+            self?.processPendingUploads()
+        }
+    }
+
+    private func persist(_ uploads: [PendingCallReportUpload]) -> Bool {
+        do {
+            let directory = try pendingUploadsDirectory()
+            let encoder = JSONEncoder()
+            for upload in uploads {
+                let filename = pendingFilename(for: upload)
+                let url = directory.appendingPathComponent(filename)
+                try encoder.encode(upload).write(to: url, options: .atomic)
+                try? (url as NSURL).setResourceValue(true, forKey: .isExcludedFromBackupKey)
+                try? FileManager.default.setAttributes(
+                    [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                    ofItemAtPath: url.path
+                )
+            }
+            Logger.log.i(message: "TelnyxCallReportCollector: Persisted \(uploads.count) pending report chunk(s)")
+            return true
+        } catch {
+            Logger.log.e(message: "TelnyxCallReportCollector: Failed to persist pending report: \(error)")
+            return false
+        }
+    }
+
+    private func processPendingUploads() {
+        guard !isUploadingPendingReports else { return }
+        guard let url = nextPendingUploadURL() else { return }
+
+        let upload: PendingCallReportUpload
+        do {
+            upload = try JSONDecoder().decode(PendingCallReportUpload.self, from: Data(contentsOf: url))
+        } catch {
+            Logger.log.e(message: "TelnyxCallReportCollector: Discarding unreadable pending report: \(error)")
+            try? FileManager.default.removeItem(at: url)
+            processPendingUploads()
+            return
+        }
+
+        guard var request = request(for: upload) else {
+            Logger.log.e(message: "TelnyxCallReportCollector: Discarding pending report with invalid endpoint")
+            try? FileManager.default.removeItem(at: url)
+            processPendingUploads()
+            return
+        }
+        request.httpBody = upload.body
+        isUploadingPendingReports = true
+
+        executeUpload(request: request, attempt: 1) { [weak self] result in
+            guard let self = self else { return }
+            self.uploadQueue.async {
+                self.isUploadingPendingReports = false
+                switch result {
+                case .delivered:
+                    try? FileManager.default.removeItem(at: url)
+                    Logger.log.i(message: "TelnyxCallReportCollector: Removed delivered pending report chunk")
+                    self.processPendingUploads()
+                case .discard:
+                    try? FileManager.default.removeItem(at: url)
+                    Logger.log.e(message: "TelnyxCallReportCollector: Discarded pending report after a non-retryable response")
+                    self.processPendingUploads()
+                case .retryLater:
+                    Logger.log.w(message: "TelnyxCallReportCollector: Keeping pending report chunk for a future replay")
+                }
+            }
+        }
+    }
+
+    private func request(for upload: PendingCallReportUpload) -> URLRequest? {
+        guard let endpoint = URL(string: upload.endpoint) else { return nil }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(upload.callReportId, forHTTPHeaderField: "x-call-report-id")
+        request.setValue(upload.callId, forHTTPHeaderField: "x-call-id")
+        if let voiceSdkId = upload.voiceSdkId {
+            request.setValue(voiceSdkId, forHTTPHeaderField: "x-voice-sdk-id")
+        }
+        return request
+    }
+
+    private func pendingUploadsDirectory() throws -> URL {
+        let fileManager = FileManager.default
+        let base = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let directory = base.appendingPathComponent("TelnyxCallReports", isDirectory: true)
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    private func nextPendingUploadURL() -> URL? {
+        guard let directory = try? pendingUploadsDirectory() else { return nil }
+        return (try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ))?
+            .filter { $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+            .first
+    }
+
+    private func pendingFilename(for upload: PendingCallReportUpload) -> String {
+        let callId = upload.callId.replacingOccurrences(of: "[^A-Za-z0-9-]", with: "-", options: .regularExpression)
+        let segment = upload.segment.map(String.init) ?? "final"
+        let timestamp = String(format: "%020.0f", Date().timeIntervalSince1970 * 1_000)
+        return "\(timestamp)-\(callId)-\(segment)-\(upload.chunkIndex)-\(UUID().uuidString).json"
+    }
+
+    private func executeUpload(request: URLRequest, attempt: Int, completion: @escaping (UploadResult) -> Void) {
+        guard let requestUrl = request.url else {
+            Logger.log.e(message: "TelnyxCallReportCollector: Request has no URL, skipping upload")
+            completion(.discard)
+            return
+        }
+        let session = urlSession(for: requestUrl)
+        let callId = request.value(forHTTPHeaderField: "x-call-id") ?? "nil"
+        let callReportId = request.value(forHTTPHeaderField: "x-call-report-id") ?? "nil"
+        let voiceSdkId = request.value(forHTTPHeaderField: "x-voice-sdk-id") ?? "nil"
+        let bodyBytes = request.httpBody?.count ?? 0
+        Logger.log.i(message: "TelnyxCallReportCollector: Uploading pending report chunk (attempt \(attempt)/\(maxRetryAttempts), bytes: \(bodyBytes), callId: \(callId), callReportId: \(callReportId), voiceSdkId: \(voiceSdkId))")
+        let task = session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else {
+                completion(.retryLater)
+                return
+            }
+
+            if let error = error {
+                Logger.log.e(message: "TelnyxCallReportCollector: Error posting report (attempt \(attempt)): \(error)")
+                self.retryIfNeeded(request: request, attempt: attempt, statusCode: nil, completion: completion)
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                completion(.retryLater)
+                return
+            }
+
+            if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                Logger.log.i(message: "TelnyxCallReportCollector: Successfully posted report (status: \(httpResponse.statusCode))")
+                completion(.delivered)
+            } else {
+                let errorText = data.flatMap { String(data: $0, encoding: .utf8) } ?? "No response body"
+                Logger.log.e(message: "TelnyxCallReportCollector: Failed to post report (attempt \(attempt), status: \(httpResponse.statusCode), error: \(errorText))")
+                self.retryIfNeeded(request: request, attempt: attempt, statusCode: httpResponse.statusCode, completion: completion)
+            }
+        }
+        task.resume()
+    }
+
+    private func retryIfNeeded(request: URLRequest, attempt: Int, statusCode: Int?, completion: @escaping (UploadResult) -> Void) {
+        // Only retry on 5xx or network errors, not on 4xx
+        if let code = statusCode, code >= 400 && code < 500 {
+            Logger.log.e(message: "TelnyxCallReportCollector: Not retrying (client error \(code))")
+            completion(.discard)
+            return
+        }
+
+        guard attempt < maxRetryAttempts else {
+            Logger.log.e(message: "TelnyxCallReportCollector: All \(maxRetryAttempts) upload attempts failed")
+            completion(.retryLater)
+            return
+        }
+
+        let delay = retryBaseDelay * pow(2.0, Double(attempt - 1))
+        Logger.log.w(message: "TelnyxCallReportCollector: Retrying in \(delay)s (attempt \(attempt + 1)/\(maxRetryAttempts))")
+
+        DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self = self else {
+                completion(.retryLater)
+                return
+            }
+            self.executeUpload(request: request, attempt: attempt + 1, completion: completion)
+        }
+    }
+    
+    /// Add a structured log entry to the call report.
+    /// - Parameters:
+    ///   - level: Log level (e.g. "info", "warn", "error")
+    ///   - message: Human-readable event description
+    ///   - context: Optional dictionary with structured event data
+    public func addLogEntry(level: String, message: String, context: [String: Any]? = nil) {
+        logCollector?.addEntry(level: level, message: message, context: context)
+    }
+
+    /// Get the current stats buffer (for debugging)
+    /// - Returns: Array of collected intervals
+    public func getStatsBuffer() -> [CallReportInterval] {
+        return statsBuffer
+    }
+    
+    /// Get the collected logs (for debugging)
+    /// - Returns: Array of log entries
+    public func getLogs() -> [LogEntry] {
+        return logCollector?.getLogs() ?? []
+    }
+    
+    /// Clean up resources (call after postReport)
+    public func cleanup() {
+        logCollector?.clear()
+    }
+    
+    // MARK: - Private Types
+
+    private struct ParsedStats {
+        let outbound: RTCOutboundRTPStreamStats?
+        let inbound: RTCInboundRTPStreamStats?
+        let candidate: RTCIceCandidatePairStats?
+        let localCandidate: RTCIceCandidateStats?
+        let remoteCandidate: RTCIceCandidateStats?
+        let transport: RTCTransportStats?
+        let mediaPlayout: RTCMediaPlayoutStats?
+        let remoteInbound: RTCRemoteInboundRTPStreamStats?
+        let remoteOutbound: RTCRemoteOutboundRTPStreamStats?
+        let outboundCodec: RTCCodecStats?
+        let inboundCodec: RTCCodecStats?
+        let outboundMediaSource: RTCMediaSourceStats?
+    }
+
+    private struct PreviousStats {
+        var timestamp: Double?
+        var outboundBytes: Int?
+        var inboundBytes: Int?
+    }
+
+    // MARK: - Private Methods
+
+    /// Collect stats from the peer connection and aggregate them
+    private func collectStats() {
+        statsCollectionLock.lock()
+        guard !isStatsCollectionInFlight,
+              let peerConnection = peerConnection,
+              let intervalStartTime = intervalStartTime else {
+            statsCollectionLock.unlock()
+            return
+        }
+        isStatsCollectionInFlight = true
+        statsCollectionLock.unlock()
+
+        peerConnection.statistics { [weak self] report in
+            guard let self = self else { return }
+            defer {
+                self.statsCollectionLock.lock()
+                self.isStatsCollectionInFlight = false
+                self.statsCollectionLock.unlock()
+            }
+
+            let now = Date()
+            let parsed = self.parseStatsReport(report)
+            if let packetsReceived = parsed.inbound?.packetsReceived {
+                self.onInboundRtpSample?(packetsReceived)
+            }
+            self.accumulateSamples(parsed: parsed, statistics: report.statistics, now: now)
+
+            // Check if interval is complete (end of collection period)
+            let intervalDuration = now.timeIntervalSince(intervalStartTime)
+            if intervalDuration >= self.config.interval {
+                self.finalizeInterval(start: intervalStartTime, end: now, parsed: parsed)
+            }
+        }
+    }
+
+    private func scheduleStatsTimer() {
+        timer?.invalidate()
+        let interval = isMediaVerificationSamplingEnabled
+            ? min(config.interval, 1.0)
+            : config.interval
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            self?.collectStats()
+        }
+    }
+
+    private func parseStatsReport(_ report: RTCStatisticsReport) -> ParsedStats {
+        parseStatistics(
+            Dictionary(uniqueKeysWithValues: report.statistics.map { ($0.key, $0.value as CallReportStatisticsRecord) })
+        )
+    }
+
+    /// Parses the native WebRTC report after it has been normalized into the
+    /// small record type below. Keeping the selection/linking here makes the
+    /// production parser testable without fabricating unavailable RTCStatistics
+    /// Objective-C instances in unit tests.
+    private func parseStatistics(_ statistics: [String: CallReportStatisticsRecord]) -> ParsedStats {
+        var outboundAudio: RTCOutboundRTPStreamStats?
+        var inboundAudio: RTCInboundRTPStreamStats?
+        var candidatePairs: [RTCIceCandidatePairStats] = []
+        var transport: RTCTransportStats?
+        var mediaPlayout: RTCMediaPlayoutStats?
+        var remoteInbound: RTCRemoteInboundRTPStreamStats?
+        var remoteOutbound: RTCRemoteOutboundRTPStreamStats?
+        var codecs: [String: RTCCodecStats] = [:]
+        var mediaSources: [String: RTCMediaSourceStats] = [:]
+
+        for stats in statistics.values {
+            switch stats.statsType {
+            case "outbound-rtp":
+                if let kind = stats.statsValues["kind"] as? String, kind == "audio" {
+                    outboundAudio = RTCOutboundRTPStreamStats(stats)
+                }
+            case "inbound-rtp":
+                if let kind = stats.statsValues["kind"] as? String, kind == "audio" {
+                    inboundAudio = RTCInboundRTPStreamStats(stats)
+                }
+            case "candidate-pair":
+                let nominated = stats.statsValues["nominated"] as? Bool ?? false
+                let state = stats.statsValues["state"] as? String ?? ""
+                if nominated || state == "succeeded" {
+                    candidatePairs.append(RTCIceCandidatePairStats(stats))
+                }
+            case "transport":
+                transport = RTCTransportStats(stats)
+            case "media-playout":
+                if let kind = stats.statsValues["kind"] as? String, kind == "audio" {
+                    mediaPlayout = RTCMediaPlayoutStats(stats)
+                }
+            case "remote-inbound-rtp":
+                if let kind = stats.statsValues["kind"] as? String, kind == "audio" {
+                    remoteInbound = RTCRemoteInboundRTPStreamStats(stats)
+                }
+            case "remote-outbound-rtp":
+                if let kind = stats.statsValues["kind"] as? String, kind == "audio" {
+                    remoteOutbound = RTCRemoteOutboundRTPStreamStats(stats)
+                }
+            case "codec":
+                codecs[stats.statsId] = RTCCodecStats(stats)
+            case "media-source":
+                if let kind = stats.statsValues["kind"] as? String, kind == "audio" {
+                    mediaSources[stats.statsId] = RTCMediaSourceStats(stats)
+                }
+            default:
+                break
+            }
+        }
+
+        let candidatePair = transport?.selectedCandidatePairId.flatMap { selectedId in
+            candidatePairs.first { $0.id == selectedId }
+        } ?? candidatePairs.last
+        let localCandidate = candidatePair?.localCandidateId.flatMap { id in
+            statistics[id].map(RTCIceCandidateStats.init)
+        }
+        let remoteCandidate = candidatePair?.remoteCandidateId.flatMap { id in
+            statistics[id].map(RTCIceCandidateStats.init)
+        }
+        let outboundCodec = outboundAudio?.codecId.flatMap { codecs[$0] }
+        let inboundCodec = inboundAudio?.codecId.flatMap { codecs[$0] }
+        let outboundMediaSource = outboundAudio?.mediaSourceId.flatMap { mediaSources[$0] }
+
+        return ParsedStats(
+            outbound: outboundAudio,
+            inbound: inboundAudio,
+            candidate: candidatePair,
+            localCandidate: localCandidate,
+            remoteCandidate: remoteCandidate,
+            transport: transport,
+            mediaPlayout: mediaPlayout,
+            remoteInbound: remoteInbound,
+            remoteOutbound: remoteOutbound,
+            outboundCodec: outboundCodec,
+            inboundCodec: inboundCodec,
+            outboundMediaSource: outboundMediaSource
+        )
+    }
+
+    /// Exposes the production report-selection path to the module test target.
+    /// It deliberately returns only stable, externally meaningful fields.
+    internal func parsedStatisticsSnapshot(
+        _ records: [CallReportStatisticsRecord]
+    ) -> CallReportStatisticsSnapshot {
+        let parsed = parseStatistics(Dictionary(uniqueKeysWithValues: records.map { ($0.statsId, $0) }))
+        return CallReportStatisticsSnapshot(
+            inboundPacketsReceived: parsed.inbound?.packetsReceived,
+            inboundBytesReceived: parsed.inbound?.bytesReceived,
+            selectedCandidatePairId: parsed.candidate?.id,
+            localCandidateType: parsed.localCandidate?.candidateType,
+            localCandidateProtocol: parsed.localCandidate?.protocolType,
+            remoteCandidateType: parsed.remoteCandidate?.candidateType,
+            iceState: parsed.transport?.iceState,
+            dtlsState: parsed.transport?.dtlsState,
+            outboundCodecMimeType: parsed.outboundCodec?.mimeType,
+            outboundMediaSourceAudioLevel: parsed.outboundMediaSource?.audioLevel
+        )
+    }
+
+    private func accumulateSamples(
+        parsed: ParsedStats,
+        statistics: [String: RTCStatistics],
+        now: Date
+    ) {
+        if let outbound = parsed.outbound {
+            // iOS exposes the local capture level on media-source. Older
+            // WebRTC builds exposed it on the track record, so keep that as a
+            // fallback for compatibility.
+            if let audioLevel = parsed.outboundMediaSource?.audioLevel ??
+                getAudioLevel(from: statistics, trackId: outbound.trackId) {
+                intervalAudioLevels.outbound.append(audioLevel)
+            }
+            if let prevBytes = previousStats.outboundBytes, let prevTimestamp = previousStats.timestamp {
+                let bytesDelta = outbound.bytesSent - prevBytes
+                let timeDelta = outbound.timestamp - prevTimestamp
+                if timeDelta > 0 {
+                    intervalBitrates.outbound.append(Double(bytesDelta * 8 * 1000) / timeDelta)
+                }
+            }
+            previousStats.outboundBytes = outbound.bytesSent
+        }
+
+        if let inbound = parsed.inbound {
+            if let audioLevel = getAudioLevel(from: statistics, trackId: inbound.trackId) {
+                intervalAudioLevels.inbound.append(audioLevel)
+            }
+            if inbound.jitter > 0 {
+                intervalJitters.append(inbound.jitter * 1000)
+            }
+            if let prevBytes = previousStats.inboundBytes, let prevTimestamp = previousStats.timestamp {
+                let bytesDelta = inbound.bytesReceived - prevBytes
+                let timeDelta = inbound.timestamp - prevTimestamp
+                if timeDelta > 0 {
+                    intervalBitrates.inbound.append(Double(bytesDelta * 8 * 1000) / timeDelta)
+                }
+            }
+            previousStats.inboundBytes = inbound.bytesReceived
+        }
+
+        if let candidate = parsed.candidate,
+           let currentRoundTripTime = candidate.currentRoundTripTime,
+           currentRoundTripTime > 0 {
+            intervalRTTs.append(currentRoundTripTime)
+        }
+
+        previousStats.timestamp = parsed.outbound?.timestamp ?? parsed.inbound?.timestamp ?? now.timeIntervalSince1970 * 1000
+    }
+
+    private func finalizeInterval(start: Date, end: Date, parsed: ParsedStats) {
+        let statsEntry = createStatsEntry(
+            start: start,
+            end: end,
+            outboundAudio: parsed.outbound,
+            inboundAudio: parsed.inbound,
+            candidatePair: parsed.candidate,
+            localCandidate: parsed.localCandidate,
+            remoteCandidate: parsed.remoteCandidate,
+            transport: parsed.transport,
+            mediaPlayout: parsed.mediaPlayout,
+            remoteInbound: parsed.remoteInbound,
+            remoteOutbound: parsed.remoteOutbound,
+            outboundCodec: parsed.outboundCodec,
+            inboundCodec: parsed.inboundCodec,
+            outboundMediaSource: parsed.outboundMediaSource
+        )
+
+        statsBuffer.append(statsEntry)
+        if statsBuffer.count > maxBufferSize {
+            statsBuffer.removeFirst()
+            Logger.log.w(message: "TelnyxCallReportCollector: Buffer size limit reached, removing oldest entry")
+        }
+
+        // Log per-interval summary (like Android's "Audio sample recorded" Timber log)
+        let jitterStr = statsEntry.audio?.inbound?.jitterAvg.map { String(format: "%.2f", $0) } ?? "n/a"
+        let rttStr = statsEntry.connection?.roundTripTimeAvg.map { String(format: "%.4f", $0) } ?? "n/a"
+        let outPkts = statsEntry.audio?.outbound?.packetsSent.map { "\($0)" } ?? "n/a"
+        let inPkts = statsEntry.audio?.inbound?.packetsReceived.map { "\($0)" } ?? "n/a"
+        let lost = statsEntry.audio?.inbound?.packetsLost.map { "\($0)" } ?? "n/a"
+        Logger.log.i(message: "TelnyxCallReportCollector: Interval #\(statsBuffer.count) collected "
+            + "(jitter: \(jitterStr)ms, rtt: \(rttStr)s, outPkts: \(outPkts), inPkts: \(inPkts), lost: \(lost))")
+
+        intervalStartTime = end
+        resetIntervalAccumulators()
+        checkFlushThresholds()
+    }
+    
+    /// Create a stats entry from accumulated values
+    private func createStatsEntry(
+        start: Date,
+        end: Date,
+        outboundAudio: RTCOutboundRTPStreamStats?,
+        inboundAudio: RTCInboundRTPStreamStats?,
+        candidatePair: RTCIceCandidatePairStats?,
+        localCandidate: RTCIceCandidateStats?,
+        remoteCandidate: RTCIceCandidateStats?,
+        transport: RTCTransportStats?,
+        mediaPlayout: RTCMediaPlayoutStats?,
+        remoteInbound: RTCRemoteInboundRTPStreamStats?,
+        remoteOutbound: RTCRemoteOutboundRTPStreamStats?,
+        outboundCodec: RTCCodecStats?,
+        inboundCodec: RTCCodecStats?,
+        outboundMediaSource: RTCMediaSourceStats?
+    ) -> CallReportInterval {
+        
+        var audioStats: AudioStats?
+        var outboundStats: OutboundAudioStats?
+        var inboundStats: InboundAudioStats?
+        
+        if let outbound = outboundAudio {
+            outboundStats = OutboundAudioStats(
+                packetsSent: outbound.packetsSent,
+                bytesSent: outbound.bytesSent,
+                audioLevelAvg: average(intervalAudioLevels.outbound),
+                bitrateAvg: average(intervalBitrates.outbound),
+                retransmittedPacketsSent: outbound.retransmittedPacketsSent,
+                retransmittedBytesSent: outbound.retransmittedBytesSent,
+                headerBytesSent: outbound.headerBytesSent,
+                nackCount: outbound.nackCount,
+                targetBitrate: outbound.targetBitrate,
+                totalPacketSendDelay: outbound.totalPacketSendDelay,
+                active: outbound.active,
+                codec: outboundCodec.map(AudioCodecStats.init),
+                mediaSource: outboundMediaSource.map(AudioMediaSourceStats.init)
+            )
+        }
+        
+        if let inbound = inboundAudio {
+            inboundStats = InboundAudioStats(
+                packetsReceived: inbound.packetsReceived,
+                bytesReceived: inbound.bytesReceived,
+                packetsLost: inbound.packetsLost,
+                packetsDiscarded: inbound.packetsDiscarded,
+                jitterBufferDelay: inbound.jitterBufferDelay,
+                jitterBufferEmittedCount: inbound.jitterBufferEmittedCount,
+                totalSamplesReceived: inbound.totalSamplesReceived,
+                concealedSamples: inbound.concealedSamples,
+                concealmentEvents: inbound.concealmentEvents,
+                audioLevelAvg: average(intervalAudioLevels.inbound),
+                jitterAvg: average(intervalJitters),
+                bitrateAvg: average(intervalBitrates.inbound),
+                nackCount: inbound.nackCount,
+                headerBytesReceived: inbound.headerBytesReceived,
+                fecPacketsReceived: inbound.fecPacketsReceived,
+                fecPacketsDiscarded: inbound.fecPacketsDiscarded,
+                jitterBufferTargetDelay: inbound.jitterBufferTargetDelay,
+                jitterBufferMinimumDelay: inbound.jitterBufferMinimumDelay,
+                totalSamplesDecoded: inbound.totalSamplesDecoded,
+                samplesDecodedWithSilence: inbound.samplesDecodedWithSilence,
+                samplesDecodedWithConcealment: inbound.samplesDecodedWithConcealment,
+                totalAudioEnergy: inbound.totalAudioEnergy,
+                totalSamplesDuration: inbound.totalSamplesDuration,
+                codec: inboundCodec.map(AudioCodecStats.init)
+            )
+        }
+        
+        if outboundStats != nil || inboundStats != nil {
+            audioStats = AudioStats(outbound: outboundStats, inbound: inboundStats)
+        }
+        
+        var connectionStats: ConnectionStats?
+        if let candidate = candidatePair {
+            connectionStats = ConnectionStats(
+                roundTripTimeAvg: average(intervalRTTs),
+                packetsSent: candidate.packetsSent,
+                packetsReceived: candidate.packetsReceived,
+                bytesSent: candidate.bytesSent,
+                bytesReceived: candidate.bytesReceived,
+                currentRoundTripTime: candidate.currentRoundTripTime,
+                roundTripTimeSource: candidate.currentRoundTripTime == nil ? nil : "candidate-pair.currentRoundTripTime"
+            )
+        }
+
+        let iceStats = candidatePair.map { candidate in
+            ICECandidatePairStats(
+                id: candidate.id,
+                localCandidateId: candidate.localCandidateId,
+                remoteCandidateId: candidate.remoteCandidateId,
+                state: candidate.state,
+                nominated: candidate.nominated,
+                writable: candidate.writable,
+                currentRoundTripTime: candidate.currentRoundTripTime,
+                requestsSent: candidate.requestsSent,
+                responsesReceived: candidate.responsesReceived,
+                local: localCandidate.map(ICECandidateStats.init),
+                remote: remoteCandidate.map(ICECandidateStats.init)
+            )
+        }
+
+        let transportStats = transport.map { stats in
+            TransportStats(
+                iceState: stats.iceState,
+                dtlsState: stats.dtlsState,
+                srtpCipher: stats.srtpCipher,
+                tlsVersion: stats.tlsVersion,
+                selectedCandidatePairChanges: stats.selectedCandidatePairChanges,
+                selectedCandidatePairId: stats.selectedCandidatePairId
+            )
+        }
+
+        let mediaPlayoutStats = mediaPlayout.map { stats in
+            MediaPlayoutStats(
+                synthesizedSamplesEvents: stats.synthesizedSamplesEvents,
+                synthesizedSamplesDuration: stats.synthesizedSamplesDuration,
+                totalPlayoutDelay: stats.totalPlayoutDelay,
+                totalSamplesCount: stats.totalSamplesCount,
+                totalSamplesDuration: stats.totalSamplesDuration
+            )
+        }
+
+        let remoteInboundStats = remoteInbound.map { stats -> RemoteInboundRTCPStats in
+            let rttAverage: Double?
+            if let total = stats.totalRoundTripTime,
+               let measurements = stats.roundTripTimeMeasurements,
+               measurements > 0 {
+                rttAverage = total / Double(measurements)
+            } else {
+                rttAverage = nil
+            }
+            return RemoteInboundRTCPStats(
+                packetsReceived: stats.packetsReceived,
+                packetsLost: stats.packetsLost,
+                fractionLost: stats.fractionLost,
+                jitter: stats.jitter.map { $0 * 1000 },
+                roundTripTime: stats.roundTripTime,
+                totalRoundTripTime: stats.totalRoundTripTime,
+                roundTripTimeMeasurements: stats.roundTripTimeMeasurements,
+                roundTripTimeAvg: rttAverage,
+                nackCount: stats.nackCount,
+                reportsReceived: stats.reportsReceived,
+                packetsDiscarded: stats.packetsDiscarded
+            )
+        }
+        let remoteOutboundStats = remoteOutbound.map { stats in
+            RemoteOutboundRTCPStats(
+                packetsSent: stats.packetsSent,
+                bytesSent: stats.bytesSent,
+                reportsCount: stats.reportsCount,
+                roundTripTime: stats.roundTripTime,
+                totalPacketSendDelay: stats.totalPacketSendDelay
+            )
+        }
+        let remoteRtcpStats = (remoteInboundStats != nil || remoteOutboundStats != nil)
+            ? RemoteRTCPStats(inbound: remoteInboundStats, outbound: remoteOutboundStats)
+            : nil
+        
+        return CallReportInterval(
+            intervalStartUtc: Self.iso8601Formatter.string(from: start),
+            intervalEndUtc: Self.iso8601Formatter.string(from: end),
+            audio: audioStats,
+            connection: connectionStats,
+            ice: iceStats,
+            transport: transportStats,
+            mediaPlayout: mediaPlayoutStats,
+            remoteRtcp: remoteRtcpStats
+        )
+    }
+    
+    /// Get audio level from track stats
+    private func getAudioLevel(from statistics: [String: RTCStatistics], trackId: String?) -> Double? {
+        guard let trackId = trackId, let trackStats = statistics[trackId] else {
+            return nil
+        }
+        
+        return trackStats.values["audioLevel"] as? Double
+    }
+    
+    /// Calculate average of an array of numbers, rounded to 4 decimal places
+    private func average(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let avg = values.reduce(0, +) / Double(values.count)
+        return (avg * 10000).rounded() / 10000
+    }
+    
+    /// Check whether stats or log buffers have reached their flush thresholds
+    /// and notify the caller via `onFlushNeeded` if so.
+    private func checkFlushThresholds() {
+        let logCount = logCollector?.getLogCount() ?? 0
+        let secondsSinceLastFlush = Date().timeIntervalSince(lastIntermediateFlushTime ?? callStartTime)
+        if statsBuffer.count >= statsFlushThreshold ||
+            logCount >= logsFlushThreshold ||
+            isIntermediateFlushDue() {
+            Logger.log.i(message: "TelnyxCallReportCollector: Flush threshold reached (stats: \(statsBuffer.count)/\(statsFlushThreshold), logs: \(logCount)/\(logsFlushThreshold), elapsed: \(Int(secondsSinceLastFlush))/\(Int(intermediateFlushInterval))s)")
+            onFlushNeeded?()
+        }
+    }
+
+    /// Reset interval accumulators for next collection period
+    private func resetIntervalAccumulators() {
+        intervalAudioLevels = ([], [])
+        intervalJitters = []
+        intervalRTTs = []
+        intervalBitrates = ([], [])
+    }
+}
+
+// MARK: - Helper Structs for RTCStatistics Parsing
+
+/// A normalized WebRTC statistics record used by the collector parser.
+///
+/// `RTCStatistics` cannot be constructed by Swift tests, so this type lets
+/// representative native report data exercise the same parser used in calls.
+internal protocol CallReportStatisticsRecord {
+    var statsId: String { get }
+    var statsType: String { get }
+    var statsTimestampMs: Double { get }
+    var statsValues: [String: Any] { get }
+}
+
+extension RTCStatistics: CallReportStatisticsRecord {
+    internal var statsId: String { id }
+    internal var statsType: String { type }
+    internal var statsTimestampMs: Double { timestamp_us / 1000.0 }
+    internal var statsValues: [String: Any] { values }
+}
+
+/// Fixture representation of one native `RTCStatistics` record.
+internal struct CallReportStatisticsFixture: CallReportStatisticsRecord {
+    internal let statsId: String
+    internal let statsType: String
+    internal let statsTimestampMs: Double
+    internal let statsValues: [String: Any]
+
+    internal init(
+        id: String,
+        type: String,
+        timestampMs: Double = 0,
+        values: [String: Any]
+    ) {
+        self.statsId = id
+        self.statsType = type
+        self.statsTimestampMs = timestampMs
+        self.statsValues = values
+    }
+}
+
+internal struct CallReportStatisticsSnapshot {
+    internal let inboundPacketsReceived: Int?
+    internal let inboundBytesReceived: Int?
+    internal let selectedCandidatePairId: String?
+    internal let localCandidateType: String?
+    internal let localCandidateProtocol: String?
+    internal let remoteCandidateType: String?
+    internal let iceState: String?
+    internal let dtlsState: String?
+    internal let outboundCodecMimeType: String?
+    internal let outboundMediaSourceAudioLevel: Double?
+}
+
+private struct RTCOutboundRTPStreamStats {
+    let packetsSent: Int
+    let bytesSent: Int
+    let trackId: String?
+    let timestamp: Double
+    let retransmittedPacketsSent: Int?
+    let retransmittedBytesSent: Int?
+    let headerBytesSent: Int?
+    let nackCount: Int?
+    let targetBitrate: Double?
+    let totalPacketSendDelay: Double?
+    let active: Bool?
+    let codecId: String?
+    let mediaSourceId: String?
+    
+    init(_ stats: CallReportStatisticsRecord) {
+        self.packetsSent = stats.statsValues["packetsSent"] as? Int ?? 0
+        self.bytesSent = stats.statsValues["bytesSent"] as? Int ?? 0
+        self.trackId = stats.statsValues["trackId"] as? String
+        self.timestamp = stats.statsTimestampMs
+        self.retransmittedPacketsSent = stats.statsValues["retransmittedPacketsSent"] as? Int
+        self.retransmittedBytesSent = stats.statsValues["retransmittedBytesSent"] as? Int
+        self.headerBytesSent = stats.statsValues["headerBytesSent"] as? Int
+        self.nackCount = stats.statsValues["nackCount"] as? Int
+        self.targetBitrate = stats.statsValues["targetBitrate"] as? Double
+        self.totalPacketSendDelay = stats.statsValues["totalPacketSendDelay"] as? Double
+        self.active = stats.statsValues["active"] as? Bool
+        self.codecId = stats.statsValues["codecId"] as? String
+        self.mediaSourceId = stats.statsValues["mediaSourceId"] as? String
+    }
+}
+
+private struct RTCInboundRTPStreamStats {
+    let packetsReceived: Int
+    let bytesReceived: Int
+    let packetsLost: Int
+    let packetsDiscarded: Int?
+    let jitter: Double
+    let jitterBufferDelay: Double?
+    let jitterBufferEmittedCount: Int?
+    let totalSamplesReceived: Int?
+    let concealedSamples: Int?
+    let concealmentEvents: Int?
+    let trackId: String?
+    let timestamp: Double
+    let nackCount: Int?
+    let headerBytesReceived: Int?
+    let fecPacketsReceived: Int?
+    let fecPacketsDiscarded: Int?
+    let jitterBufferTargetDelay: Double?
+    let jitterBufferMinimumDelay: Double?
+    let totalSamplesDecoded: Int?
+    let samplesDecodedWithSilence: Int?
+    let samplesDecodedWithConcealment: Int?
+    let totalAudioEnergy: Double?
+    let totalSamplesDuration: Double?
+    let codecId: String?
+    
+    init(_ stats: CallReportStatisticsRecord) {
+        self.packetsReceived = stats.statsValues["packetsReceived"] as? Int ?? 0
+        self.bytesReceived = stats.statsValues["bytesReceived"] as? Int ?? 0
+        self.packetsLost = stats.statsValues["packetsLost"] as? Int ?? 0
+        self.packetsDiscarded = stats.statsValues["packetsDiscarded"] as? Int
+        self.jitter = stats.statsValues["jitter"] as? Double ?? 0
+        self.jitterBufferDelay = stats.statsValues["jitterBufferDelay"] as? Double
+        self.jitterBufferEmittedCount = stats.statsValues["jitterBufferEmittedCount"] as? Int
+        self.totalSamplesReceived = stats.statsValues["totalSamplesReceived"] as? Int
+        self.concealedSamples = stats.statsValues["concealedSamples"] as? Int
+        self.concealmentEvents = stats.statsValues["concealmentEvents"] as? Int
+        self.trackId = stats.statsValues["trackId"] as? String
+        self.timestamp = stats.statsTimestampMs
+        self.nackCount = stats.statsValues["nackCount"] as? Int
+        self.headerBytesReceived = stats.statsValues["headerBytesReceived"] as? Int
+        self.fecPacketsReceived = stats.statsValues["fecPacketsReceived"] as? Int
+        self.fecPacketsDiscarded = stats.statsValues["fecPacketsDiscarded"] as? Int
+        self.jitterBufferTargetDelay = stats.statsValues["jitterBufferTargetDelay"] as? Double
+        self.jitterBufferMinimumDelay = stats.statsValues["jitterBufferMinimumDelay"] as? Double
+        self.totalSamplesDecoded = stats.statsValues["totalSamplesDecoded"] as? Int
+        self.samplesDecodedWithSilence = stats.statsValues["samplesDecodedWithSilence"] as? Int
+        self.samplesDecodedWithConcealment = stats.statsValues["samplesDecodedWithConcealment"] as? Int
+        self.totalAudioEnergy = stats.statsValues["totalAudioEnergy"] as? Double
+        self.totalSamplesDuration = stats.statsValues["totalSamplesDuration"] as? Double
+        self.codecId = stats.statsValues["codecId"] as? String
+    }
+}
+
+private struct RTCCodecStats {
+    let id: String
+    let mimeType: String?
+    let payloadType: Int?
+    let clockRate: Int?
+    let channels: Int?
+    let sdpFmtpLine: String?
+
+    init(_ stats: CallReportStatisticsRecord) {
+        self.id = stats.statsId
+        self.mimeType = stats.statsValues["mimeType"] as? String
+        self.payloadType = stats.statsValues["payloadType"] as? Int
+        self.clockRate = stats.statsValues["clockRate"] as? Int
+        self.channels = stats.statsValues["channels"] as? Int
+        self.sdpFmtpLine = stats.statsValues["sdpFmtpLine"] as? String
+    }
+}
+
+private extension AudioCodecStats {
+    init(_ stats: RTCCodecStats) {
+        self.init(
+            codecId: stats.id,
+            mimeType: stats.mimeType,
+            payloadType: stats.payloadType,
+            clockRate: stats.clockRate,
+            channels: stats.channels,
+            sdpFmtpLine: stats.sdpFmtpLine
+        )
+    }
+}
+
+private struct RTCMediaSourceStats {
+    let id: String
+    let audioLevel: Double?
+    let totalAudioEnergy: Double?
+    let totalSamplesDuration: Double?
+    let echoReturnLoss: Double?
+    let echoReturnLossEnhancement: Double?
+    let trackIdentifier: String?
+
+    init(_ stats: CallReportStatisticsRecord) {
+        self.id = stats.statsId
+        self.audioLevel = stats.statsValues["audioLevel"] as? Double
+        self.totalAudioEnergy = stats.statsValues["totalAudioEnergy"] as? Double
+        self.totalSamplesDuration = stats.statsValues["totalSamplesDuration"] as? Double
+        self.echoReturnLoss = stats.statsValues["echoReturnLoss"] as? Double
+        self.echoReturnLossEnhancement = stats.statsValues["echoReturnLossEnhancement"] as? Double
+        self.trackIdentifier = stats.statsValues["trackIdentifier"] as? String
+    }
+}
+
+private extension AudioMediaSourceStats {
+    init(_ stats: RTCMediaSourceStats) {
+        self.init(
+            id: stats.id,
+            audioLevel: stats.audioLevel,
+            totalAudioEnergy: stats.totalAudioEnergy,
+            totalSamplesDuration: stats.totalSamplesDuration,
+            echoReturnLoss: stats.echoReturnLoss,
+            echoReturnLossEnhancement: stats.echoReturnLossEnhancement,
+            trackIdentifier: stats.trackIdentifier
+        )
+    }
+}
+
+private struct RTCIceCandidatePairStats {
+    let id: String
+    let localCandidateId: String?
+    let remoteCandidateId: String?
+    let state: String?
+    let nominated: Bool?
+    let writable: Bool?
+    let packetsSent: Int?
+    let packetsReceived: Int?
+    let bytesSent: Int?
+    let bytesReceived: Int?
+    let currentRoundTripTime: Double?
+    let requestsSent: Int?
+    let responsesReceived: Int?
+    
+    init(_ stats: CallReportStatisticsRecord) {
+        self.id = stats.statsId
+        self.localCandidateId = stats.statsValues["localCandidateId"] as? String
+        self.remoteCandidateId = stats.statsValues["remoteCandidateId"] as? String
+        self.state = stats.statsValues["state"] as? String
+        self.nominated = stats.statsValues["nominated"] as? Bool
+        self.writable = stats.statsValues["writable"] as? Bool
+        self.packetsSent = stats.statsValues["packetsSent"] as? Int
+        self.packetsReceived = stats.statsValues["packetsReceived"] as? Int
+        self.bytesSent = stats.statsValues["bytesSent"] as? Int
+        self.bytesReceived = stats.statsValues["bytesReceived"] as? Int
+        self.currentRoundTripTime = stats.statsValues["currentRoundTripTime"] as? Double
+        self.requestsSent = stats.statsValues["requestsSent"] as? Int
+        self.responsesReceived = stats.statsValues["responsesReceived"] as? Int
+    }
+}
+
+private struct RTCIceCandidateStats {
+    let id: String
+    let address: String?
+    let port: Int?
+    let candidateType: String?
+    let protocolType: String?
+    let networkType: String?
+    let url: String?
+    let relayProtocol: String?
+
+    init(_ stats: CallReportStatisticsRecord) {
+        self.id = stats.statsId
+        self.address = (stats.statsValues["address"] as? String) ?? (stats.statsValues["ip"] as? String)
+        self.port = stats.statsValues["port"] as? Int
+        self.candidateType = stats.statsValues["candidateType"] as? String
+        self.protocolType = stats.statsValues["protocol"] as? String
+        self.networkType = stats.statsValues["networkType"] as? String
+        self.url = stats.statsValues["url"] as? String
+        self.relayProtocol = stats.statsValues["relayProtocol"] as? String
+    }
+}
+
+private extension ICECandidateStats {
+    init(_ stats: RTCIceCandidateStats) {
+        self.init(id: stats.id, address: stats.address, port: stats.port, candidateType: stats.candidateType, protocolType: stats.protocolType, networkType: stats.networkType, url: stats.url, relayProtocol: stats.relayProtocol)
+    }
+}
+
+private struct RTCTransportStats {
+    let iceState: String?
+    let dtlsState: String?
+    let srtpCipher: String?
+    let tlsVersion: String?
+    let selectedCandidatePairChanges: Int?
+    let selectedCandidatePairId: String?
+
+    init(_ stats: CallReportStatisticsRecord) {
+        self.iceState = stats.statsValues["iceState"] as? String
+        self.dtlsState = stats.statsValues["dtlsState"] as? String
+        self.srtpCipher = stats.statsValues["srtpCipher"] as? String
+        self.tlsVersion = stats.statsValues["tlsVersion"] as? String
+        self.selectedCandidatePairChanges = stats.statsValues["selectedCandidatePairChanges"] as? Int
+        self.selectedCandidatePairId = stats.statsValues["selectedCandidatePairId"] as? String
+    }
+}
+
+private struct RTCMediaPlayoutStats {
+    let synthesizedSamplesEvents: Int?
+    let synthesizedSamplesDuration: Double?
+    let totalPlayoutDelay: Double?
+    let totalSamplesCount: Int?
+    let totalSamplesDuration: Double?
+
+    init(_ stats: CallReportStatisticsRecord) {
+        self.synthesizedSamplesEvents = stats.statsValues["synthesizedSamplesEvents"] as? Int
+        self.synthesizedSamplesDuration = stats.statsValues["synthesizedSamplesDuration"] as? Double
+        self.totalPlayoutDelay = stats.statsValues["totalPlayoutDelay"] as? Double
+        self.totalSamplesCount = stats.statsValues["totalSamplesCount"] as? Int
+        self.totalSamplesDuration = stats.statsValues["totalSamplesDuration"] as? Double
+    }
+}
+
+private struct RTCRemoteInboundRTPStreamStats {
+    let packetsReceived: Int?
+    let packetsLost: Int?
+    let fractionLost: Double?
+    let jitter: Double?
+    let roundTripTime: Double?
+    let totalRoundTripTime: Double?
+    let roundTripTimeMeasurements: Int?
+    let nackCount: Int?
+    let reportsReceived: Int?
+    let packetsDiscarded: Int?
+
+    init(_ stats: CallReportStatisticsRecord) {
+        self.packetsReceived = stats.statsValues["packetsReceived"] as? Int
+        self.packetsLost = stats.statsValues["packetsLost"] as? Int
+        self.fractionLost = stats.statsValues["fractionLost"] as? Double
+        self.jitter = stats.statsValues["jitter"] as? Double
+        self.roundTripTime = stats.statsValues["roundTripTime"] as? Double
+        self.totalRoundTripTime = stats.statsValues["totalRoundTripTime"] as? Double
+        self.roundTripTimeMeasurements = stats.statsValues["roundTripTimeMeasurements"] as? Int
+        self.nackCount = stats.statsValues["nackCount"] as? Int
+        self.reportsReceived = stats.statsValues["reportsReceived"] as? Int
+        self.packetsDiscarded = stats.statsValues["packetsDiscarded"] as? Int
+    }
+}
+
+private struct RTCRemoteOutboundRTPStreamStats {
+    let packetsSent: Int?
+    let bytesSent: Int?
+    let reportsCount: Int?
+    let roundTripTime: Double?
+    let totalPacketSendDelay: Double?
+
+    init(_ stats: CallReportStatisticsRecord) {
+        self.packetsSent = stats.statsValues["packetsSent"] as? Int
+        self.bytesSent = stats.statsValues["bytesSent"] as? Int
+        self.reportsCount = stats.statsValues["reportsCount"] as? Int
+        self.roundTripTime = stats.statsValues["roundTripTime"] as? Double
+        self.totalPacketSendDelay = stats.statsValues["totalPacketSendDelay"] as? Double
+    }
+}

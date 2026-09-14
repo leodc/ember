@@ -121,7 +121,7 @@ struct EmberHomeView: View {
                     Text("Two ways to try Ember").font(.headline)
                     feature("waveform", "Rehearse with AI", "Play the receptionist. Ember speaks, asks for your input, and follows your written instructions.")
                     Divider()
-                    feature("phone", "Make a phone call", "Call a real number and speak yourself. The AI voice is not connected to phone calls yet.")
+                    feature("phone", "Make a phone call", "Call a real number yourself, or try a call where Ember speaks for you.")
                 }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 24))
                 Label("Your answers and instructions stay in your hands.", systemImage: "hand.raised")
                     .font(.subheadline).foregroundStyle(Ember.secondary)

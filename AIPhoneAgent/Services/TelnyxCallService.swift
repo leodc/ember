@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import OSLog
 import TelnyxRTC
+import WebRTC
 
 @MainActor
 protocol TelnyxCallServiceDelegate: AnyObject {
@@ -21,7 +22,8 @@ protocol CallingService: AnyObject {
 final class TelnyxCallService: NSObject, CallingService {
     weak var delegate: (any TelnyxCallServiceDelegate)?
 
-    private let client = TxClient()
+    private let client: TxClient
+    private let usesCustomAudioDevice: Bool
     private let audioLogger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "AIPhoneAgent",
         category: "TelnyxAudio"
@@ -33,11 +35,21 @@ final class TelnyxCallService: NSObject, CallingService {
     private var isAudioSessionActive = false
 
     override init() {
+        client = TxClient()
+        usesCustomAudioDevice = false
+        super.init()
+        client.delegate = self
+    }
+
+    init(audioDevice: any RTCAudioDevice) {
+        client = TxClient(audioDevice: audioDevice)
+        usesCustomAudioDevice = true
         super.init()
         client.delegate = self
     }
 
     deinit {
+        currentCall?.hangup()
         if isAudioSessionActive {
             client.disableAudioSession(audioSession: AVAudioSession.sharedInstance())
         }
@@ -86,6 +98,7 @@ final class TelnyxCallService: NSObject, CallingService {
     }
 
     func setSpeaker(enabled: Bool) {
+        guard !usesCustomAudioDevice else { return }
         enabled ? client.setSpeaker() : client.setEarpiece()
     }
 
@@ -111,6 +124,10 @@ final class TelnyxCallService: NSObject, CallingService {
     }
 
     private func activateAudioSession() -> Bool {
+        if usesCustomAudioDevice {
+            currentCall?.unmuteAudio()
+            return true // PCM callbacks, not AVAudioSession, own the audio.
+        }
         guard !isAudioSessionActive else { return true }
         let audioSession = AVAudioSession.sharedInstance()
 

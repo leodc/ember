@@ -901,3 +901,464 @@ final class LiveInstructionTests: XCTestCase {
         XCTAssertEqual(controller.transcripts.count, 1)
     }
 }
+
+final class AudioBridgeProbeSignalTests: XCTestCase {
+    private func render(_ signal: inout AudioBridgeProbeSignal, value: Int16 = 0) -> [Int16] {
+        let input = [Int16](repeating: value, count: 480)
+        var output = [Int16](repeating: -1, count: 480)
+        input.withUnsafeBufferPointer { incoming in
+            output.withUnsafeMutableBufferPointer { signal.render(remote: incoming, into: $0) }
+        }
+        return output
+    }
+    func testDefaultIsSilenceEvenWithRemoteSpeech() {
+        var signal = AudioBridgeProbeSignal()
+        for _ in 0..<40 { XCTAssertTrue(render(&signal, value: 20_000).allSatisfy { $0 == 0 }) }
+    }
+    func testToneIsBoundedAndStopsAfterOneSecond() {
+        var signal = AudioBridgeProbeSignal()
+        signal.startTone()
+        let samples = (0..<100).flatMap { _ in render(&signal) }
+        XCTAssertEqual(samples.count, 48_000)
+        XCTAssertGreaterThan(samples.map { abs(Int($0)) }.max()!, 1_900)
+        XCTAssertLessThanOrEqual(samples.map { abs(Int($0)) }.max()!, 2_000)
+        XCTAssertEqual(samples.first, 0)
+        XCTAssertTrue(render(&signal).allSatisfy { $0 == 0 })
+    }
+    func testEchoDelays300msAndAttenuatesWithoutOverflow() {
+        var signal = AudioBridgeProbeSignal()
+        signal.setEcho(true)
+        for _ in 0..<30 { XCTAssertTrue(render(&signal, value: .min).allSatisfy { $0 == 0 }) }
+        XCTAssertTrue(render(&signal).allSatisfy { $0 == -16_384 })
+    }
+    func testDisablingEchoClearsPreviouslyReceivedAudio() {
+        var signal = AudioBridgeProbeSignal()
+        signal.setEcho(true)
+        for _ in 0..<40 { _ = render(&signal, value: 10_000) }
+        signal.setEcho(false)
+        XCTAssertTrue(render(&signal).allSatisfy { $0 == 0 })
+        signal.setEcho(true)
+        XCTAssertTrue(render(&signal).allSatisfy { $0 == 0 })
+    }
+    func testResetCancelsToneAndEcho() {
+        var signal = AudioBridgeProbeSignal()
+        signal.setEcho(true)
+        signal.startTone()
+        _ = render(&signal, value: 10_000)
+        signal.reset()
+        for _ in 0..<40 { XCTAssertTrue(render(&signal).allSatisfy { $0 == 0 }) }
+    }
+}
+
+@MainActor
+final class AudioBridgeProbeControllerTests: XCTestCase {
+    private let definition = CallDefinition(phoneNumber: "09012345678", objective: "Audio test")
+    func testInvalidNumberCannotCreateService() {
+        var creations = 0
+        let controller = AudioBridgeProbeController(makeService: { _ in creations += 1; return FakeCallingService() })
+        controller.start(definition: .init(phoneNumber: "invalid", objective: "Test"))
+        XCTAssertEqual(creations, 0)
+        XCTAssertEqual(controller.state, .idle)
+    }
+    func testDuplicateStartAndStopAndLateConnect() {
+        let service = FakeCallingService()
+        let controller = AudioBridgeProbeController(makeService: { _ in service }, loadConfiguration: {
+            .init(sipUser: "test", password: "test", callerNumber: "+819012345678")
+        })
+        controller.start(definition: definition)
+        controller.start(definition: definition)
+        XCTAssertEqual(service.destinations.count, 1)
+        controller.stop()
+        controller.stop()
+        controller.telnyxServiceDidConnect(service)
+        XCTAssertEqual(controller.state, .ended)
+        XCTAssertEqual(service.endCount, 1)
+        XCTAssertNil(service.delegate)
+    }
+    func testRemoteHangupStopsEchoAndRejectsStaleEventsAfterRestart() {
+        let first = FakeCallingService(), second = FakeCallingService()
+        var creations = 0
+        let controller = AudioBridgeProbeController(makeService: { _ in
+            creations += 1; return creations == 1 ? first : second
+        }, loadConfiguration: { .init(sipUser: "test", password: "test", callerNumber: "+819012345678") })
+        controller.start(definition: definition)
+        controller.telnyxServiceDidConnect(first)
+        controller.toggleEcho()
+        XCTAssertTrue(controller.echoEnabled)
+        controller.telnyxService(first, didEndWith: nil)
+        XCTAssertFalse(controller.echoEnabled)
+        controller.start(definition: definition)
+        controller.telnyxService(first, didEndWith: nil)
+        XCTAssertEqual(controller.state, .dialing)
+        controller.stop()
+    }
+    func testConfigurationFailureDoesNotDial() {
+        var creations = 0
+        let controller = AudioBridgeProbeController(makeService: { _ in creations += 1; return FakeCallingService() },
+            loadConfiguration: { throw RealtimeError.configuration })
+        controller.start(definition: definition)
+        XCTAssertEqual(creations, 0)
+        guard case .failed = controller.state else { return XCTFail("Expected configuration failure") }
+    }
+}
+
+import WebRTC
+
+/// Uses the real M150 binary with two local peers, no Telnyx/OpenAI account.
+/// This proves the native PCM seam, not PSTN audio on a physical iPhone.
+@MainActor
+final class AudioBridgeNativeTests: XCTestCase {
+    func testTwoCustomDevicesExchangeToneWithoutHardwareAudio() async throws {
+        weak var releasedFirst: AudioBridgeProbeDevice?
+        weak var releasedSecond: AudioBridgeProbeDevice?
+        try await exchangeTone { first, second in
+            releasedFirst = first
+            releasedSecond = second
+        }
+        for _ in 0..<100 where releasedFirst != nil || releasedSecond != nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertNil(releasedFirst, "A's pump and native delegate must release after closing")
+        XCTAssertNil(releasedSecond, "B's pump and native delegate must release after closing")
+    }
+
+    private func exchangeTone(onDevices: (AudioBridgeProbeDevice, AudioBridgeProbeDevice) -> Void) async throws {
+        let first = AudioBridgeProbeDevice(), second = AudioBridgeProbeDevice()
+        onDevices(first, second)
+        let factoryA = RTCPeerConnectionFactory(encoderFactory: nil, decoderFactory: nil, audioDevice: first)
+        let factoryB = RTCPeerConnectionFactory(encoderFactory: nil, decoderFactory: nil, audioDevice: second)
+        let config = RTCConfiguration()
+        config.sdpSemantics = .unifiedPlan
+        let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
+        let a = try XCTUnwrap(factoryA.peerConnection(with: config, constraints: constraints, delegate: nil))
+        let b = try XCTUnwrap(factoryB.peerConnection(with: config, constraints: constraints, delegate: nil))
+        defer {
+            first.shutdown(); second.shutdown()
+            a.close(); b.close()
+        }
+        a.add(factoryA.audioTrack(withTrackId: "tone-a"), streamIds: ["a"])
+        b.add(factoryB.audioTrack(withTrackId: "tone-b"), streamIds: ["b"])
+        let offer: RTCSessionDescription = try await withCheckedThrowingContinuation { continuation in
+            a.offer(for: constraints) { sdp, error in
+                if let error { continuation.resume(throwing: error) }
+                else if let sdp { continuation.resume(returning: sdp) }
+                else { continuation.resume(throwing: RealtimeError.connection) }
+            }
+        }
+        try await set(offer, on: a, local: true)
+        try await gathered(a)
+        try await set(try XCTUnwrap(a.localDescription), on: b, local: false)
+        let answer: RTCSessionDescription = try await withCheckedThrowingContinuation { continuation in
+            b.answer(for: constraints) { sdp, error in
+                if let error { continuation.resume(throwing: error) }
+                else if let sdp { continuation.resume(returning: sdp) }
+                else { continuation.resume(throwing: RealtimeError.connection) }
+            }
+        }
+        try await set(answer, on: b, local: true)
+        try await gathered(b)
+        try await set(try XCTUnwrap(b.localDescription), on: a, local: false)
+        first.activate(); second.activate()
+        // Let ICE/DTLS complete and prove both callback directions run.
+        for _ in 0..<100 {
+            if first.snapshot.suppliedBlocks > 20 && second.snapshot.suppliedBlocks > 20 { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        first.sendTone(); second.sendTone()
+        for _ in 0..<100 {
+            if first.snapshot.nonSilentReceivedBlocks > 10 && second.snapshot.nonSilentReceivedBlocks > 10 { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertGreaterThan(first.snapshot.nonSilentReceivedBlocks, 10, "A must receive B's generated tone")
+        XCTAssertGreaterThan(second.snapshot.nonSilentReceivedBlocks, 10, "B must receive A's generated tone")
+        XCTAssertGreaterThan(first.snapshot.nonSilentSuppliedBlocks, 10)
+        XCTAssertGreaterThan(second.snapshot.nonSilentSuppliedBlocks, 10)
+        XCTAssertEqual(first.snapshot.callbackErrors + second.snapshot.callbackErrors, 0)
+        first.shutdown(); second.shutdown()
+        let stoppedA = first.snapshot, stoppedB = second.snapshot
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(stoppedA, first.snapshot)
+        XCTAssertEqual(stoppedB, second.snapshot)
+    }
+
+    private func set(_ sdp: RTCSessionDescription, on peer: RTCPeerConnection, local: Bool) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let completion: (Error?) -> Void = { error in
+                if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+            }
+            if local { peer.setLocalDescription(sdp, completionHandler: completion) }
+            else { peer.setRemoteDescription(sdp, completionHandler: completion) }
+        }
+    }
+    private func gathered(_ peer: RTCPeerConnection) async throws {
+        for _ in 0..<100 {
+            if peer.iceGatheringState == .complete { return }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        throw RealtimeError.timeout
+    }
+}
+
+final class BridgePCMBufferTests: XCTestCase {
+    private func write(_ samples: [Int16], to buffer: BridgePCMBuffer) { samples.withUnsafeBufferPointer { buffer.write($0) } }
+    private func read(_ buffer: BridgePCMBuffer, count: Int = 480) -> [Int16] {
+        var result = [Int16](repeating: -1, count: count)
+        result.withUnsafeMutableBufferPointer { buffer.read(into: $0) }
+        return result
+    }
+    func testFIFOOrderAndSilenceOnUnderflow() {
+        let buffer = BridgePCMBuffer(capacity: 480)
+        write([1, 2, 3], to: buffer)
+        XCTAssertEqual(Array(read(buffer).prefix(5)), [1, 2, 3, 0, 0])
+        XCTAssertTrue(read(buffer).allSatisfy { $0 == 0 })
+        XCTAssertEqual(buffer.snapshot.underflows, 2)
+    }
+    func testRingWrapPreservesOrder() {
+        let buffer = BridgePCMBuffer(capacity: 480)
+        write((0..<400).map(Int16.init), to: buffer)
+        XCTAssertEqual(read(buffer, count: 300), (0..<300).map(Int16.init))
+        write((400..<700).map(Int16.init), to: buffer)
+        XCTAssertEqual(read(buffer, count: 400), (300..<700).map(Int16.init))
+    }
+    func testOverflowFailsClosedAndCannotReplayOldSpeech() {
+        let buffer = BridgePCMBuffer(capacity: 480)
+        write(.init(repeating: 2000, count: 480), to: buffer)
+        write([1], to: buffer)
+        XCTAssertEqual(buffer.snapshot.overflows, 1)
+        XCTAssertTrue(read(buffer).allSatisfy { $0 == 0 })
+        buffer.setAccepting(true)
+        write([3000], to: buffer)
+        XCTAssertTrue(read(buffer).allSatisfy { $0 == 0 })
+    }
+    func testInterruptionDiscardsBufferedAndSubsequentOldAudio() {
+        let buffer = BridgePCMBuffer()
+        write([3000], to: buffer)
+        buffer.setAccepting(false)
+        write([4000], to: buffer)
+        XCTAssertTrue(read(buffer).allSatisfy { $0 == 0 })
+        buffer.setAccepting(true)
+        write([5000], to: buffer)
+        XCTAssertEqual(read(buffer).first, 5000)
+    }
+    func testStopIsPermanent() {
+        let buffer = BridgePCMBuffer()
+        buffer.stop(); buffer.setAccepting(true)
+        write([1000], to: buffer)
+        XCTAssertEqual(buffer.snapshot.writtenBlocks, 0)
+        XCTAssertTrue(read(buffer).allSatisfy { $0 == 0 })
+    }
+}
+
+@MainActor
+final class BridgedCallServiceTests: XCTestCase {
+    private let definition = CallDefinition(phoneNumber: "09012345678", objective: "Book a cleaning")
+    private let config = RealtimeConfiguration(apiKey: "test", model: "test")
+    private func make(_ ai: FakeRealtimeService, _ phone: FakeCallingService) -> BridgedCallService {
+        .init(makeRealtime: { _ in ai }, makeTelephone: { _ in phone },
+              loadTelephone: { .init(sipUser: "test", password: "test", callerNumber: "+819012345678") })
+    }
+    func testDialOnlyAfterOpenAIReadyAndReadyOnlyAfterAnswer() async throws {
+        let ai = FakeRealtimeService(), phone = FakeCallingService()
+        let service = make(ai, phone)
+        defer { service.stop() }
+        var readyCount = 0
+        service.onEvent = { if case .ready = $0 { readyCount += 1 } }
+        try await service.start(definition: definition, language: .spanish, configuration: config)
+        XCTAssertTrue(phone.destinations.isEmpty)
+        ai.onEvent?(.ready); ai.onEvent?(.ready)
+        XCTAssertEqual(phone.destinations.count, 1)
+        XCTAssertEqual(readyCount, 0)
+        service.telnyxServiceDidConnect(phone)
+        service.telnyxServiceDidConnect(phone)
+        XCTAssertEqual(readyCount, 1)
+    }
+    func testStopBeforeReadyCannotDialFromLateCallback() async throws {
+        let ai = FakeRealtimeService(), phone = FakeCallingService()
+        let service = make(ai, phone)
+        try await service.start(definition: definition, language: .spanish, configuration: config)
+        let late = ai.onEvent
+        service.stop(); service.stop()
+        late?(.ready)
+        XCTAssertTrue(phone.destinations.isEmpty)
+        XCTAssertTrue(ai.stopped)
+    }
+    func testRecipientHangupReleasesBothAndIgnoresStaleEvents() async throws {
+        let ai = FakeRealtimeService(), phone = FakeCallingService()
+        let service = make(ai, phone)
+        var endings = 0
+        service.onEvent = { if case .endedByRecipient = $0 { endings += 1 } }
+        try await service.start(definition: definition, language: .spanish, configuration: config)
+        ai.onEvent?(.ready)
+        service.telnyxServiceDidConnect(phone)
+        service.telnyxService(phone, didEndWith: nil)
+        service.telnyxService(phone, didEndWith: nil)
+        XCTAssertEqual(endings, 1)
+        XCTAssertEqual(phone.endCount, 1)
+        XCTAssertTrue(ai.stopped)
+        XCTAssertNil(phone.delegate)
+    }
+    func testOpenAIFailureHangsUpPhone() async throws {
+        let ai = FakeRealtimeService(), phone = FakeCallingService()
+        let service = make(ai, phone)
+        var failures = 0
+        service.onEvent = { if case .failed = $0 { failures += 1 } }
+        try await service.start(definition: definition, language: .spanish, configuration: config)
+        ai.onEvent?(.ready)
+        ai.onEvent?(.failed(.connection))
+        XCTAssertEqual(failures, 1)
+        XCTAssertEqual(phone.endCount, 1)
+        XCTAssertTrue(ai.stopped)
+    }
+    func testAnswersAndInstructionsReachSameRealtimeSession() async throws {
+        let ai = FakeRealtimeService(), phone = FakeCallingService()
+        let service = make(ai, phone)
+        defer { service.stop() }
+        try await service.start(definition: definition, language: .spanish, configuration: config)
+        XCTAssertThrowsError(try service.submitInstruction(id: UUID(), text: "Before answer"))
+        ai.onEvent?(.ready); service.telnyxServiceDidConnect(phone)
+        let id = UUID()
+        try service.submitAnswer(requestID: id, answer: "No")
+        try service.submitInstruction(id: id, text: "Ask about parking")
+        XCTAssertEqual(ai.answers.first?.0, id)
+        XCTAssertEqual(ai.answers.first?.1, "No")
+        XCTAssertEqual(ai.instructions.first?.1, "Ask about parking")
+    }
+    func testInstructionCancelsPendingAgentHangup() async throws {
+        let ai = FakeRealtimeService(), phone = FakeCallingService()
+        let service = make(ai, phone)
+        defer { service.stop() }
+        try await service.start(definition: definition, language: .spanish, configuration: config)
+        ai.onEvent?(.ready); service.telnyxServiceDidConnect(phone)
+        ai.onEvent?(.endedByAgent)
+        try service.submitInstruction(id: UUID(), text: "Wait, one more question")
+        try await Task.sleep(for: .milliseconds(600))
+        XCTAssertEqual(phone.endCount, 0)
+        XCTAssertFalse(ai.stopped)
+    }
+    func testAgentEndWaitsForTelnyxTailThenReleasesBoth() async throws {
+        let ai = FakeRealtimeService(), phone = FakeCallingService()
+        let service = make(ai, phone)
+        defer { service.stop() }
+        let ended = expectation(description: "Agent end forwarded after audio tail")
+        service.onEvent = { if case .endedByAgent = $0 { ended.fulfill() } }
+        try await service.start(definition: definition, language: .spanish, configuration: config)
+        ai.onEvent?(.ready); service.telnyxServiceDidConnect(phone)
+        ai.onEvent?(.endedByAgent)
+        XCTAssertEqual(phone.endCount, 0)
+        await fulfillment(of: [ended], timeout: 2)
+        XCTAssertEqual(phone.endCount, 1)
+        XCTAssertTrue(ai.stopped)
+    }
+    func testPhoneContextDoesNotClaimRehearsalAndRetainsTools() {
+        let session = RealtimeSessionContext.session(for: definition, userLanguage: .spanish, model: "test", telephone: true)
+        let instructions = session["instructions"] as? String ?? ""
+        XCTAssertTrue(instructions.contains("real outgoing telephone call"))
+        XCTAssertFalse(instructions.contains("local voice rehearsal"))
+        XCTAssertTrue(instructions.contains("Book a cleaning"))
+        XCTAssertEqual((session["tools"] as? [[String: Any]])?.count, 2)
+        XCTAssertTrue(RealtimeSessionContext.instructions(for: definition, userLanguage: .spanish).contains("local voice rehearsal"))
+    }
+}
+
+extension AudioBridgeNativeTests {
+    func testFourPeersRelayBothDirectionsAndGateInterruptedOutput() async throws {
+        let bridge = AudioBridge()
+        let phoneRemote = AudioBridgeProbeDevice(), aiRemote = AudioBridgeProbeDevice()
+        let devices = [phoneRemote, bridge.telephoneDevice, bridge.realtimeDevice, aiRemote]
+        let factories = devices.map { RTCPeerConnectionFactory(encoderFactory: nil, decoderFactory: nil, audioDevice: $0) }
+        let config = RTCConfiguration(); config.sdpSemantics = .unifiedPlan
+        let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
+        let peers = try factories.map { try XCTUnwrap($0.peerConnection(with: config, constraints: constraints, delegate: nil)) }
+        defer {
+            devices.forEach { $0.shutdown() }
+            bridge.stop()
+            peers.forEach { $0.close() }
+            withExtendedLifetime(factories) {}
+        }
+        for index in 0..<4 {
+            peers[index].add(factories[index].audioTrack(withTrackId: "relay-\(index)"), streamIds: ["relay-\(index)"])
+        }
+        try await connectPair(peers[0], peers[1], constraints: constraints)
+        try await connectPair(peers[2], peers[3], constraints: constraints)
+        devices.forEach { $0.activate() }
+        for _ in 0..<100 {
+            if devices.allSatisfy({ $0.snapshot.suppliedBlocks > 20 }) { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        phoneRemote.sendTone()
+        for _ in 0..<100 {
+            if aiRemote.snapshot.nonSilentReceivedBlocks > 10 { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertGreaterThan(aiRemote.snapshot.nonSilentReceivedBlocks, 10, "Recipient PCM must cross both connections")
+        XCTAssertEqual(phoneRemote.snapshot.nonSilentReceivedBlocks, 0, "The bridge must not echo reception's voice back")
+        bridge.agentStartedSpeaking()
+        aiRemote.sendTone()
+        for _ in 0..<100 {
+            if phoneRemote.snapshot.nonSilentReceivedBlocks > 10 { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertGreaterThan(phoneRemote.snapshot.nonSilentReceivedBlocks, 10, "Agent PCM must cross back to reception")
+        bridge.interruptAgent()
+        try await Task.sleep(for: .milliseconds(400)) // Drain the remote peer's RTP jitter tail.
+        let before = phoneRemote.snapshot.nonSilentReceivedBlocks
+        aiRemote.sendTone()
+        try await Task.sleep(for: .milliseconds(600))
+        XCTAssertEqual(phoneRemote.snapshot.nonSilentReceivedBlocks, before, "Interrupted output stays gated until a new response starts")
+        XCTAssertFalse(bridge.failed)
+        XCTAssertEqual(bridge.snapshot.toAgent.overflows + bridge.snapshot.toRecipient.overflows, 0)
+    }
+
+    private func connectPair(_ a: RTCPeerConnection, _ b: RTCPeerConnection, constraints: RTCMediaConstraints) async throws {
+        let offer: RTCSessionDescription = try await withCheckedThrowingContinuation { continuation in
+            a.offer(for: constraints) { sdp, error in
+                if let error { continuation.resume(throwing: error) }
+                else if let sdp { continuation.resume(returning: sdp) }
+                else { continuation.resume(throwing: RealtimeError.connection) }
+            }
+        }
+        try await set(offer, on: a, local: true); try await gathered(a)
+        try await set(try XCTUnwrap(a.localDescription), on: b, local: false)
+        let answer: RTCSessionDescription = try await withCheckedThrowingContinuation { continuation in
+            b.answer(for: constraints) { sdp, error in
+                if let error { continuation.resume(throwing: error) }
+                else if let sdp { continuation.resume(returning: sdp) }
+                else { continuation.resume(throwing: RealtimeError.connection) }
+            }
+        }
+        try await set(answer, on: b, local: true); try await gathered(b)
+        try await set(try XCTUnwrap(b.localDescription), on: a, local: false)
+    }
+}
+
+extension BridgedCallServiceTests {
+    func testMissingTelephoneConfigurationCannotCreateOpenAIService() async {
+        var created = 0
+        let service = BridgedCallService(makeRealtime: { _ in created += 1; return FakeRealtimeService() },
+            loadTelephone: { throw RealtimeError.configuration })
+        do {
+            try await service.start(definition: .init(phoneNumber: "09012345678", objective: "Test"),
+                                    language: .spanish, configuration: .init(apiKey: "test", model: "test"))
+            XCTFail("Expected configuration failure")
+        } catch {}
+        XCTAssertEqual(created, 0)
+    }
+    func testLateVADCannotMuteFinalGoodbyeButLiveInstructionsCan() throws {
+        var interrupts = 0, starts = 0
+        let client = OpenAIRealtimeClient(sendEvent: { _ in }, onAudioInterrupted: { interrupts += 1 }, onAudioStarted: { starts += 1 })
+        defer { client.stop() }
+        func event(_ value: [String: Any]) throws { client.receive(try JSONSerialization.data(withJSONObject: value)) }
+        try event(["type": "input_audio_buffer.speech_started"])
+        XCTAssertEqual(interrupts, 1)
+        try event(["type": "response.done", "response": ["id": "end", "status": "completed", "output": [[
+            "type": "function_call", "name": "end_session", "call_id": "end-tool",
+            "arguments": "{\"reason\":\"recipient_requested_end\"}"
+        ]]]])
+        try event(["type": "output_audio_buffer.started", "response_id": "goodbye"])
+        try event(["type": "input_audio_buffer.speech_started"])
+        XCTAssertEqual(starts, 1)
+        XCTAssertEqual(interrupts, 1, "Late input events cannot mute a VAD-disabled goodbye")
+        try client.submitInstruction(id: UUID(), text: "Wait, ask one more thing")
+        XCTAssertGreaterThan(interrupts, 1)
+    }
+}

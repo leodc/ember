@@ -25,13 +25,16 @@ struct VisualReviewGallery: View {
         _controller = State(initialValue: RealtimeTestController(makeService: { service },
             configuration: { .init(apiKey: "visual-review-no-network", model: "visual-review") }, permission: { true }))
         definition = CallDefinition(contactName: english ? "Sakura Dental Clinic" : "Clínica dental Sakura",
+            phoneNumber: scenario.hasPrefix("phone-") ? "+819012345678" : "",
             objective: english ? "Book a dental cleaning" : "Reservar una limpieza dental",
             agentLanguage: "Japanese", availability: english ? "Wednesday · 10:00–12:00" : "Miércoles · 10:00–12:00")
     }
 
     var body: some View {
         Group {
-            if scenario.hasPrefix("app-") {
+            if scenario.hasPrefix("bridge-") {
+                AudioBridgeReviewGallery(connected: scenario == "bridge-connected")
+            } else if scenario.hasPrefix("app-") {
                 WholeAppReviewGallery(scenario: scenario, english: english)
             } else {
                 voiceScenario
@@ -41,11 +44,11 @@ struct VisualReviewGallery: View {
     }
 
     private var voiceScenario: some View {
-        RealtimeTestView(definition: definition, controller: controller)
+        RealtimeTestView(definition: definition, controller: controller, phoneCall: scenario.hasPrefix("phone-"))
             .environment(\.locale, Locale(identifier: english ? "en" : "es"))
             .dynamicTypeSize(largeText ? .accessibility3 : .large)
             .task {
-                if scenario == "voice-ready" { return }
+                if scenario == "voice-ready" || scenario == "phone-ready" { return }
                 controller.start(definition: definition, language: english ? .english : .spanish)
                 for _ in 0..<100 where controller.state == .connecting { await Task.yield() }
                 guard !Task.isCancelled else { return }
@@ -167,6 +170,20 @@ private struct WholeAppReviewGallery: View {
                 ContentView()
             }
         }.environment(calls).environment(settings)
+    }
+}
+
+/// The gallery can never dial, even if its buttons are tapped.
+private struct AudioBridgeReviewGallery: View {
+    let connected: Bool
+    private let definition = CallDefinition(contactName: "Test", phoneNumber: "+819012345678", objective: "Audio test")
+    @State private var controller = AudioBridgeProbeController(
+        makeService: { _ in VisualPhoneService() },
+        loadConfiguration: { .init(sipUser: "visual-review", password: "no-network", callerNumber: "+819012345678") })
+
+    var body: some View {
+        AudioBridgeProbeView(definition: definition, controller: controller)
+            .task { if connected { controller.start(definition: definition) } }
     }
 }
 

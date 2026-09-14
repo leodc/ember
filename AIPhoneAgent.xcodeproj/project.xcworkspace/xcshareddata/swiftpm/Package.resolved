@@ -1,5 +1,5 @@
 {
-  "originHash" : "54be6c551b67178efb9e165f02e930c909c1504beb9a1bb8673b4131993c9a6c",
+  "originHash" : "0e6ba4629e8ad88d21612f0b6133c528fa3ae02b2262ad0a6769c5b9a38f0298",
   "pins" : [
     {
       "identity" : "starscream",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "c6bfd1af48efcc9a9ad203665db12375ba6b145a",
         "version" : "4.0.8"
-      }
-    },
-    {
-      "identity" : "telnyx-webrtc-ios",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/team-telnyx/telnyx-webrtc-ios.git",
-      "state" : {
-        "revision" : "99dbca66ef7005178d5a70b03bfe74512f4a4f28",
-        "version" : "4.2.0"
       }
     },
     {

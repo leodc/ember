@@ -4,6 +4,29 @@ Reviewed on 2026-09-09 against TelnyxRTC `main` at commit
 `4a9fe8d86e0f20d50a7f1c0ccaafa8e15344b495` (release 4.2.0 timeframe) and its
 WebRTC M150 dependency.
 
+## Physical test accepted — 2026-09-13
+
+The user confirms audible tone, working voice return, and hangup from both phones
+and on backgrounding. Both supplied screenshots show zero callback errors and
+zero delayed ticks. The native Telnyx seam is now demonstrated on the iPhone for
+this probe. OpenAI/PSTN conversation remains a separate pending validation.
+The next implementation uses two custom-device WebRTC peers rather than
+WebSocket audio. See [the second step](Milestone5RealtimeBridge.md).
+
+## Initial implementation — 2026-09-13
+
+The installed version is TelnyxRTC 4.2.0 at
+`99dbca66ef7005178d5a70b03bfe74512f4a4f28`, with WebRTC M150. Its actual binary
+headers expose `RTCAudioDevice` and the injectable factory initializer. Ember
+now vendors this exact source with a narrow, per-client audio-device patch.
+A real two-peer WebRTC test in the simulator exchanged generated PCM tones in
+both directions, with zero audio callback errors. The Telnyx tone/voice-return
+probe is implemented for physical testing. No PSTN call has been made by the
+agent and OpenAI audio is not connected yet. See [Milestone 5](Milestone5AudioBridge.md).
+
+The original investigation below remains the rationale; its statement that
+on-device feasibility is unverified still applies to a physical iPhone/PSTN call.
+
 ## Finding
 
 WebRTC's custom audio-device seam is a candidate path for the required bridge,

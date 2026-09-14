@@ -4,6 +4,8 @@ struct CallReviewView: View {
     @Environment(CallController.self) private var controller
     @Environment(AppSettings.self) private var settings
     @State private var showsRealtimeTest = false
+    @State private var showsAudioBridgeProbe = false
+    @State private var showsAgentCall = false
     private var definition: CallDefinition { controller.definition }
     var body: some View {
         ScrollView {
@@ -34,7 +36,7 @@ struct CallReviewView: View {
                     .background(.white, in: RoundedRectangle(cornerRadius: 24))
                 VStack(alignment: .leading, spacing: 14) {
                     Label("Phone call · You speak", systemImage: "phone").font(.headline)
-                    Text("This calls a real number using your microphone. Ember’s AI voice does not join this call yet.")
+                    Text("This calls a real number using your microphone. You speak directly to the recipient.")
                         .font(.subheadline).foregroundStyle(Ember.secondary)
                     if definition.canPlaceCall {
                         Text(PhoneNumberInput.display(definition.phoneNumber)).font(.headline).textSelection(.enabled)
@@ -49,6 +51,24 @@ struct CallReviewView: View {
                             .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
                     }
                 }.padding(20).background(Ember.peach.opacity(0.35), in: RoundedRectangle(cornerRadius: 24))
+                if definition.canPlaceCall {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Phone call · Ember speaks", systemImage: "phone.bubble").font(.headline)
+                        Text("Ember speaks with the person who answers. You can reply to questions on screen or send instructions.")
+                            .font(.subheadline).foregroundStyle(Ember.secondary)
+                        Button { showsAgentCall = true } label: {
+                            Label("Prepare a call with Ember", systemImage: "waveform").frame(minHeight: 44)
+                        }.buttonStyle(.bordered).tint(Ember.ink)
+                        Text("Experimental audio bridge. A real call is placed only when you start it on the next screen.")
+                            .font(.caption).foregroundStyle(Ember.secondary)
+                    }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 24))
+                    Button { showsAudioBridgeProbe = true } label: {
+                        Label("Test the audio bridge", systemImage: "waveform.path")
+                            .frame(minHeight: 44)
+                    }
+                    Text("Milestone 5: test telephone audio with a tone and voice return.")
+                        .font(.caption).foregroundStyle(Ember.secondary)
+                }
             }.padding(24).frame(maxWidth: 568).frame(maxWidth: .infinity)
         }
         .safeAreaInset(edge: .bottom) {
@@ -62,6 +82,8 @@ struct CallReviewView: View {
             }
         }
         .sheet(isPresented: $showsRealtimeTest) { RealtimeTestView(definition: definition) }
+        .sheet(isPresented: $showsAudioBridgeProbe) { AudioBridgeProbeView(definition: definition) }
+        .sheet(isPresented: $showsAgentCall) { RealtimeTestView(definition: definition, phoneCall: true) }
         .navigationTitle("Review details")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {

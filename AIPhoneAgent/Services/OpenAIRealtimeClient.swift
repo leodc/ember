@@ -15,7 +15,8 @@ protocol RealtimeServicing: AnyObject {
 enum TranscriptSpeaker: Equatable { case agent, recipient, userInstruction }
 
 enum RealtimeEvent {
-    case ready, listening, thinking, speaking, ending, endedByAgent
+    case bridgeDiagnostics(AudioBridgeSnapshot)
+    case ready, listening, thinking, speaking, ending, endedByAgent, endedByRecipient
     case askUser(AskUserRequest)
     case questionSuperseded
     case instructionSubmitted(id: UUID, text: String)
@@ -25,16 +26,24 @@ enum RealtimeEvent {
     case failed(RealtimeError)
 }
 
-/// Owns only the independent OpenAI peer. Never creates a Telnyx client or call.
+/// Owns only the OpenAI peer. An optional PCM device replaces physical audio.
 @MainActor
 final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
     var onEvent: ((RealtimeEvent) -> Void)?
     // Allows protocol-level regression tests without opening a microphone or network connection.
     private let sendEvent: (([String: Any]) throws -> Void)?
     private var stopped = false
+    private let audioDevice: (any RTCAudioDevice)?
+    private let onAudioInterrupted: (() -> Void)?
+    private let onAudioStarted: (() -> Void)?
 
-    init(sendEvent: (([String: Any]) throws -> Void)? = nil) {
+    init(sendEvent: (([String: Any]) throws -> Void)? = nil,
+         audioDevice: (any RTCAudioDevice)? = nil,
+         onAudioInterrupted: (() -> Void)? = nil, onAudioStarted: (() -> Void)? = nil) {
         self.sendEvent = sendEvent
+        self.audioDevice = audioDevice
+        self.onAudioInterrupted = onAudioInterrupted
+        self.onAudioStarted = onAudioStarted
         super.init()
     }
 
@@ -74,7 +83,7 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
     func start(definition: CallDefinition, language: AppLanguage, configuration: RealtimeConfiguration) async throws {
         stopped = false
         agentLanguage = definition.agentLanguage
-        try configureAudio()
+        if audioDevice == nil { try configureAudio() }
         try await negotiate(definition: definition, language: language, configuration: configuration)
     }
 
@@ -101,7 +110,8 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
     }
 
     private func negotiate(definition: CallDefinition, language: AppLanguage, configuration: RealtimeConfiguration) async throws {
-        let factory = RTCPeerConnectionFactory()
+        let factory = audioDevice.map { RTCPeerConnectionFactory(encoderFactory: nil, decoderFactory: nil, audioDevice: $0) }
+            ?? RTCPeerConnectionFactory()
         self.factory = factory
         let config = RTCConfiguration()
         config.sdpSemantics = .unifiedPlan
@@ -110,7 +120,10 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
             throw RealtimeError.connection
         }
         self.peer = peer
-        let track = factory.audioTrack(with: factory.audioSource(with: constraints), trackId: "ember-microphone")
+        let audioConstraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints:
+            audioDevice == nil ? nil : ["googEchoCancellation": "false", "googAutoGainControl": "false",
+                                       "googNoiseSuppression": "false", "googHighpassFilter": "false"])
+        let track = factory.audioTrack(with: factory.audioSource(with: audioConstraints), trackId: "ember-audio-input")
         track.isEnabled = false // Do not transmit before the configured session is ready.
         microphone = track
         peer.add(track, streamIds: ["ember-realtime"])
@@ -119,7 +132,7 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
         }
         self.channel = channel
         channel.delegate = self
-        observeAudioChanges()
+        if audioDevice == nil { observeAudioChanges() }
         let offer: RTCSessionDescription = try await withCheckedThrowingContinuation { continuation in
             peer.offer(for: constraints) { sdp, error in
                 if let error { continuation.resume(throwing: error) }
@@ -144,7 +157,7 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
         guard self.peer === peer, let sdp = peer.localDescription?.sdp else { throw CancellationError() }
         let boundary = "Ember-\(UUID().uuidString)"
         let session = try JSONSerialization.data(withJSONObject: RealtimeSessionContext.session(
-            for: definition, userLanguage: language, model: configuration.model))
+            for: definition, userLanguage: language, model: configuration.model, telephone: audioDevice != nil))
         var body = Data()
         for (name, value) in [("sdp", Data(sdp.utf8)), ("session", session)] {
             body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
@@ -317,6 +330,7 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
 
     private func interruptForInstruction() throws {
         guard pendingInstruction != nil else { return }
+        onAudioInterrupted?()
         if let activeResponseID, instructionCancelEventID == nil {
             let eventID = UUID().uuidString
             instructionCancelEventID = eventID
@@ -486,6 +500,7 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
             microphone?.isEnabled = true
             onEvent?(.ready)
         case "input_audio_buffer.speech_started":
+            if !closing { onAudioInterrupted?() }
             inputSpeechActive = true
             if let id = event["item_id"] as? String {
                 onEvent?(.transcript(id: id, text: "", final: false, speaker: .recipient))
@@ -499,6 +514,7 @@ final class OpenAIRealtimeClient: NSObject, RealtimeServicing {
             logger.info("Input speech stopped")
             onEvent?(.thinking)
         case "output_audio_buffer.started":
+            onAudioStarted?()
             outputPlaying = true
             logger.info("Output playback started")
             if pendingInstruction != nil {

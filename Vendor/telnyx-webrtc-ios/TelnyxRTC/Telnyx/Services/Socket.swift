@@ -1,0 +1,264 @@
+//
+//  Socket.swift
+//  TelnyxRTC
+//
+//  Created by Guillermo Battistel on 02/03/2021.
+//  Copyright © 2021 Telnyx LLC. All rights reserved.
+//
+
+import Foundation
+import Starscream
+
+class Socket {
+    
+    weak var delegate: SocketDelegate?
+    var isConnected : Bool = false
+    private var socket : WebSocket?
+    private var reconnect : Bool = false
+    internal var signalingServer:URL? = nil
+    
+    /// Timer for manual connection timeout.
+    private var connectionTimeoutTimer: Timer?
+    
+    /// Prevents the socket's disconnect callback from sending a second non-timeout disconnect
+    /// after a connection timeout has already requested a reconnect.
+    private var suppressDisconnectCallbackAfterConnectionTimeout = false
+
+    /// Test seam that allows unit tests to validate request/timer setup without opening a network connection.
+    internal var automaticallyConnectWebSocket = true
+
+    /// Connection timeout interval in seconds
+    private var connectionTimeout: TimeInterval = 5.0
+    
+    /// Call report ID captured from REGED message for stateless authentication
+    /// Used to authenticate call quality reports posted to voice-sdk-proxy
+    var callReportId: String?
+
+    /// Voice SDK ID captured from REGED message
+    /// Used as x-voice-sdk-id header when posting call reports
+    var voiceSdkId: String?
+
+    func connect(signalingServer: URL) {
+        Logger.log.i(message: "Socket:: connect()")
+        
+        // Cancel any existing timeout timer
+        cancelConnectionTimeout()
+        suppressDisconnectCallbackAfterConnectionTimeout = false
+        
+        var request = URLRequest(url: signalingServer)
+        request.timeoutInterval = connectionTimeout
+
+        let pinner: FoundationSecurity
+        #if DEBUG
+        if SSLValidationHelper.shouldAllowSelfSigned(for: signalingServer) {
+            pinner = FoundationSecurity(allowSelfSigned: true)
+        } else {
+            pinner = FoundationSecurity(allowSelfSigned: false)
+        }
+        #else
+        pinner = FoundationSecurity(allowSelfSigned: false)
+        #endif
+
+        self.signalingServer = signalingServer
+        
+        self.socket = WebSocket(request: request, certPinner: pinner)
+        self.socket?.delegate = self
+        
+        // Apply the SDK dial timeout to every signaling server, including the default auto URL.
+        startConnectionTimeout()
+        
+        if automaticallyConnectWebSocket {
+            self.socket?.connect()
+        }
+    }
+    
+    func disconnect(reconnect:Bool) {
+        Logger.log.i(message: "Socket:: disconnect()")
+        self.reconnect  = reconnect
+        
+        // Cancel timeout timer since we're explicitly disconnecting
+        cancelConnectionTimeout()
+        
+        self.socket?.disconnect()
+    }
+    
+    func sendMessage(message: String?) {
+        if self.isConnected == false {
+            Logger.log.e(message: "Socket:: not connected...")
+            return
+        }
+        if let message = message,
+           let socket = self.socket {
+            socket.write(string: message)
+            Logger.log.verto(message: "Socket:: sendMessage() message: \(message)", direction: .outbound)
+        } else {
+            Logger.log.e(message: "Socket:: sendMessage() Error sending message...")
+        }
+    }
+    
+}
+
+// MARK:- WebSocketDelegate
+extension Socket : WebSocketDelegate {
+    // Fallback to .auto Region
+    func shouldFallbackToAuto(signalingServer: URL?) -> Bool {
+        guard let url = signalingServer,
+              let host = url.host,
+              isTelnyxRTCRegionalHost(host),
+              let regionPrefix = extractRegionPrefix(from: url),
+              let region = Region(rawValue: regionPrefix) else {
+            return false
+        }
+        return region != .auto
+    }
+    
+    private func isTelnyxRTCRegionalHost(_ host: String) -> Bool {
+        host.hasSuffix(".rtc.telnyx.com") || host.hasSuffix(".rtcdev.telnyx.com")
+    }
+
+    func extractRegionPrefix(from url: URL) -> String? {
+        let host = url.host ?? ""
+        let components = host.components(separatedBy: ".")
+        if components.count >= 2 {
+            return components[0] // e.g., "us-west"
+        }
+        return nil
+    }
+
+    
+    func didReceive(event: WebSocketEvent, client: WebSocketClient) {
+        switch event {
+        case .connected(let headers):
+            // Connection successful - cancel timeout timer
+            cancelConnectionTimeout()
+            isConnected = true
+            self.delegate?.onSocketConnected()
+            Logger.log.i(message: "Socket:: websocket is connected: \(headers)")
+            break;
+            
+        case .disconnected(let reason, let code):
+            //This are server side disconnections
+            cancelConnectionTimeout()
+            isConnected = false
+            if suppressDisconnectCallbackAfterConnectionTimeout {
+                suppressDisconnectCallbackAfterConnectionTimeout = false
+                Logger.log.i(message: "Socket:: websocket disconnected after connection timeout: \(reason) with code: \(code)")
+                break
+            }
+            self.delegate?.onSocketDisconnected(reconnect: self.reconnect,region: nil)
+            Logger.log.i(message: "Socket:: websocket is disconnected: \(reason) with code: \(code)")
+            break;
+            
+        case .text(let message):
+            Logger.log.verto(message: "\(message)", direction: .inbound)
+            self.delegate?.onMessageReceived(message: message)
+            break;
+
+        case .cancelled:
+            cancelConnectionTimeout()
+            isConnected = false
+            if suppressDisconnectCallbackAfterConnectionTimeout {
+                suppressDisconnectCallbackAfterConnectionTimeout = false
+                Logger.log.i(message: "Socket:: WebSocketDelegate .cancelled after connection timeout")
+                break
+            }
+            self.delegate?.onSocketDisconnected(reconnect: self.reconnect,region: nil)
+            self.reconnect = false
+            Logger.log.i(message: "Socket:: WebSocketDelegate .cancelled")
+            break
+            
+        case .error(let error):
+            cancelConnectionTimeout()
+            isConnected = false
+            if suppressDisconnectCallbackAfterConnectionTimeout {
+                suppressDisconnectCallbackAfterConnectionTimeout = false
+                Logger.log.i(message: "Socket:: WebSocketDelegate .error after connection timeout")
+                break
+            }
+            guard let error = error else {
+                Logger.log.e(message: "Socket:: WebSocketDelegate .error UNKNOWN")
+                return
+            }
+            if(shouldFallbackToAuto(signalingServer: self.signalingServer)) {
+                Logger.log.i(message: "Socket:: Triggering fallback to auto region due to error: \(error)")
+                self.delegate?.onSocketDisconnected(reconnect: true,region: .auto)
+            }
+            self.delegate?.onSocketError(error: error)
+            Logger.log.e(message: "Socket:: WebSocketDelegate .error \(error)")
+            break;
+            
+        case .binary(let data):
+            break
+        case .ping(_):
+            break
+        case .pong(_):
+            break
+        case .viabilityChanged(_):
+            break
+        case .reconnectSuggested(_):
+            break
+        case .peerClosed:
+            break
+        @unknown default:
+            break
+        }
+    }
+    
+    // MARK: - Connection Timeout Management
+    
+    /// Sets the connection timeout interval
+    /// - Parameter timeout: Timeout interval in seconds (minimum 5 seconds)
+    public func setConnectionTimeout(_ timeout: TimeInterval) {
+        connectionTimeout = max(5.0, timeout)
+    }
+    
+    /// The currently configured WebSocket request timeout interval.
+    internal var currentRequestTimeoutInterval: TimeInterval? {
+        socket?.request.timeoutInterval
+    }
+
+    /// Whether the manual connection timeout timer is currently scheduled.
+    internal var hasConnectionTimeoutTimer: Bool {
+        connectionTimeoutTimer != nil
+    }
+
+    /// Starts the connection timeout timer.
+    private func startConnectionTimeout() {
+        connectionTimeoutTimer = Timer.scheduledTimer(withTimeInterval: connectionTimeout, repeats: false) { [weak self] _ in
+            self?.handleConnectionTimeout()
+        }
+    }
+    
+    /// Cancels the connection timeout timer
+    private func cancelConnectionTimeout() {
+        connectionTimeoutTimer?.invalidate()
+        connectionTimeoutTimer = nil
+    }
+    
+    /// Handles connection timeout by triggering the reconnect mechanism.
+    internal func handleConnectionTimeout() {
+        Logger.log.e(message: "Socket:: Connection timeout after \(connectionTimeout) seconds")
+        cancelConnectionTimeout()
+        
+        // Mark as not connected and disconnect socket
+        isConnected = false
+        let shouldSuppressDisconnectCallback = socket != nil
+        suppressDisconnectCallbackAfterConnectionTimeout = shouldSuppressDisconnectCallback
+        socket?.disconnect()
+        if !shouldSuppressDisconnectCallback {
+            suppressDisconnectCallbackAfterConnectionTimeout = false
+        }
+        
+        let reconnectRegion = connectionTimeoutReconnectRegion(signalingServer: signalingServer)
+        Logger.log.i(message: "Socket:: Triggering reconnect due to timeout with region: \(String(describing: reconnectRegion))")
+        delegate?.onSocketDisconnected(reconnect: true, region: reconnectRegion)
+    }
+
+    /// Region override to pass to TxClient after a connection timeout.
+    /// Region URLs fall back to `.auto`; default/auto URLs keep `nil` so TxClient redials the same URL.
+    internal func connectionTimeoutReconnectRegion(signalingServer: URL?) -> Region? {
+        shouldFallbackToAuto(signalingServer: signalingServer) ? .auto : nil
+    }
+    
+    
+}

@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct RealtimeTestView: View {
     let definition: CallDefinition
+    let phoneCall: Bool
     @Environment(CallController.self) private var callController
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
@@ -11,9 +12,12 @@ struct RealtimeTestView: View {
     @State private var controller: RealtimeTestController
     @State private var followTranscript = true
 
-    init(definition: CallDefinition, controller: RealtimeTestController? = nil) {
+    init(definition: CallDefinition, controller: RealtimeTestController? = nil, phoneCall: Bool = false) {
         self.definition = definition
-        _controller = State(initialValue: controller ?? RealtimeTestController())
+        self.phoneCall = phoneCall
+        _controller = State(initialValue: controller ?? (phoneCall
+            ? RealtimeTestController(makeService: { BridgedCallService() }, permission: { true }, connectionTimeout: .seconds(100))
+            : RealtimeTestController()))
     }
 
     private var hasConversation: Bool { controller.state.isActive || !controller.transcripts.isEmpty }
@@ -33,9 +37,10 @@ struct RealtimeTestView: View {
                                 conversationHeader
                             }
                             if !hasConversation {
-                                Text("Rehearse the conversation").font(.largeTitle.bold())
-                                Text("You play the receptionist; Ember represents you. Say hello, ask a question, or offer a different time. No real call is made.")
+                                Text(copy("Rehearse the conversation", "Let Ember make the call")).font(.largeTitle.bold())
+                                Text(copy("You play the receptionist; Ember represents you. Say hello, ask a question, or offer a different time. No real call is made.", "Ember will call this number and speak for you. Your iPhone microphone and speaker are not used. Keep the app in the foreground."))
                                     .foregroundStyle(Ember.secondary)
+                                if phoneCall { Text(PhoneNumberInput.display(definition.phoneNumber)).font(.headline) }
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text(definition.objective).font(.headline)
                                     AgentLanguagePicker(language: $callController.definition.agentLanguage)
@@ -59,11 +64,25 @@ struct RealtimeTestView: View {
                                 VStack(spacing: 12) {
                                     Image(systemName: "waveform").font(.largeTitle).foregroundStyle(Ember.orange)
                                     Text("The conversation will appear here").font(.headline)
-                                    Text("Say hello as the receptionist to begin.").font(.subheadline).foregroundStyle(Ember.secondary)
+                                    Text(copy("Say hello as the receptionist to begin.", "Ember waits for the person who answers to say hello.")).font(.subheadline).foregroundStyle(Ember.secondary)
                                 }.multilineTextAlignment(.center).frame(maxWidth: .infinity).padding(.vertical, 56)
                             }
                             ForEach(controller.transcripts) { item in
                                 TranscriptBubble(item: item)
+                            }
+                            if let audio = controller.bridgeDiagnostics {
+                                DisclosureGroup("Audio diagnostics") {
+                                    VStack(spacing: 10) {
+                                        LabeledContent("Telnyx audio received", value: audio.telephone.receivedBlocks.formatted())
+                                        LabeledContent("Audio supplied to OpenAI", value: audio.toAgent.readBlocks.formatted())
+                                        LabeledContent("OpenAI audio received", value: audio.realtime.receivedBlocks.formatted())
+                                        LabeledContent("Audio supplied to Telnyx", value: audio.toRecipient.readBlocks.formatted())
+                                        LabeledContent("Recipient signal blocks", value: audio.telephone.nonSilentReceivedBlocks.formatted())
+                                        LabeledContent("Agent signal blocks", value: audio.realtime.nonSilentReceivedBlocks.formatted())
+                                        LabeledContent("Audio callback errors", value: (audio.telephone.callbackErrors + audio.realtime.callbackErrors).formatted())
+                                        LabeledContent("Audio queue overflows", value: (audio.toAgent.overflows + audio.toRecipient.overflows).formatted())
+                                    }.font(.caption).padding(.top, 10)
+                                }.font(.subheadline)
                             }
                             if !controller.state.isActive && hasConversation {
                                 VStack(alignment: .leading, spacing: 10) {
@@ -71,7 +90,7 @@ struct RealtimeTestView: View {
                                     if case .failed(let message) = controller.state {
                                         Text(message).font(.subheadline).foregroundStyle(Ember.secondary)
                                     }
-                                    Text("This was a rehearsal. No appointment was booked by the app.")
+                                    Text(copy("This was a rehearsal. No appointment was booked by the app.", "The call has ended. A booking is confirmed only if the recipient explicitly confirmed it."))
                                         .font(.subheadline).foregroundStyle(Ember.secondary)
                                 }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
                                     .background(Ember.peach.opacity(0.4), in: RoundedRectangle(cornerRadius: 20))
@@ -129,7 +148,7 @@ struct RealtimeTestView: View {
                                 .frame(width: 54, height: 54)
                                 .background(Color.red.opacity(0.08), in: Circle())
                         }.buttonStyle(.plain).foregroundStyle(.red)
-                            .accessibilityLabel("End voice test").accessibilityIdentifier("live-end-session")
+                            .accessibilityLabel(copy("End voice test", "End phone call")).accessibilityIdentifier("live-end-session")
                     }
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .frame(maxWidth: 640).frame(maxWidth: .infinity).background(Ember.background)
@@ -137,24 +156,26 @@ struct RealtimeTestView: View {
                 } else {
                     EmberFooter {
                         VStack(spacing: 10) {
-                            SessionActionButton(title: hasConversation ? "Start a new rehearsal" : "Start rehearsal") {
+                            SessionActionButton(title: phoneCall ? "Call with Ember" : (hasConversation ? "Start a new rehearsal" : "Start rehearsal")) {
                                 var context = definition
                                 context.userIdentity = settings.userIdentity
                                 context.agentLanguage = callController.definition.agentLanguage
                                 followTranscript = true
                                 controller.start(definition: context, language: settings.language)
-                            }.disabled(callController.definition.agentLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            Text("Audio and appointment details are sent to OpenAI. API usage is billed separately.")
+                            }.disabled(callController.definition.agentLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (phoneCall && !definition.canPlaceCall))
+                            Text(copy("Audio and appointment details are sent to OpenAI. API usage is billed separately.", "This places a real call. Telnyx and OpenAI charges apply. Call audio and appointment details are sent to OpenAI."))
                                 .font(.caption).foregroundStyle(Ember.secondary)
                         }
                     }
                 }
             }
-            .navigationTitle("Voice rehearsal")
+            .navigationTitle(copy("Voice rehearsal", "Phone call with Ember"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(controller.state.isActive ? "End rehearsal" : "Done") { controller.stop(); dismiss() }
+                    Button { controller.stop(); dismiss() } label: {
+                        Text(controller.state.isActive ? copy("End rehearsal", "End phone call") : LocalizedStringKey("Done"))
+                    }
                 }
             }
         }
@@ -167,9 +188,14 @@ struct RealtimeTestView: View {
                 .dynamicTypeSize(dynamicTypeSize)
         }
         .onDisappear { controller.stop() }
+        .interactiveDismissDisabled(controller.state.isActive)
         .onChange(of: scenePhase) { _, phase in
             if phase == .background, controller.state.isActive { controller.stop() }
         }
+    }
+
+    private func copy(_ rehearsal: String, _ phone: String) -> LocalizedStringKey {
+        LocalizedStringKey(phoneCall ? phone : rehearsal)
     }
 
     private var conversationHeader: some View {
@@ -186,8 +212,8 @@ struct RealtimeTestView: View {
 
     @ViewBuilder private var status: some View {
         switch controller.state {
-        case .idle: Label("Ready to test", systemImage: "mic")
-        case .connecting: HStack { ProgressView(); Text("Connecting to OpenAI…") }
+        case .idle: Label(copy("Ready to test", "Ready to call"), systemImage: phoneCall ? "phone" : "mic")
+        case .connecting: HStack { ProgressView(); Text(copy("Connecting to OpenAI…", "Preparing Ember and calling…")) }
         case .listening: Label("Agent listening", systemImage: "ear")
         case .thinking: Label("Agent thinking", systemImage: "ellipsis.bubble")
         case .speaking: Label("Agent speaking", systemImage: "waveform")
@@ -197,11 +223,11 @@ struct RealtimeTestView: View {
             if controller.endedByAgent {
                 Label("The agent ended the session", systemImage: "checkmark.circle")
             } else {
-                Label("Voice test ended", systemImage: "checkmark.circle")
+                Label(copy("Voice test ended", "Phone call ended"), systemImage: "checkmark.circle")
             }
         case .failed(let message):
             if hasConversation {
-                Label("Rehearsal interrupted", systemImage: "exclamationmark.triangle").foregroundStyle(Ember.critical)
+                Label(copy("Rehearsal interrupted", "Phone call interrupted"), systemImage: "exclamationmark.triangle").foregroundStyle(Ember.critical)
             } else {
                 Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(Ember.critical)
             }
